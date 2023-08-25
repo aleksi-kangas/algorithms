@@ -1,51 +1,36 @@
-#include <algorithm>
-#include <bitset>
-#include <cassert>
-#include <climits>
-#include <cmath>
-#include <deque>
-#include <functional>
+#include <charconv>
+#include <cstdint>
 #include <iostream>
-#include <iterator>
-#include <map>
-#include <memory>
-#include <numeric>
-#include <optional>
-#include <queue>
-#include <set>
-#include <sstream>
-#include <stack>
 #include <string>
-#include <tuple>
-#include <unordered_map>
-#include <unordered_set>
-#include <utility>
-#include <vector>
 
-using namespace std;
+std::int32_t ParseInt32(std::string_view s) {
+  std::int32_t result{0};
+  auto [_, ec] = std::from_chars(s.data(), s.data() + s.size(), result);
+  if (ec != std::errc{})
+    throw std::runtime_error{"Failed to parse int32_t"};
+  return result;
+}
 
-using ll = long long;
+bool IsIncreasing(std::string_view previous, std::string_view current) {
+  const std::int32_t previous_value = ParseInt32(previous);
+  const std::int32_t current_value = ParseInt32(current);
+  return previous_value < current_value;
+}
 
-int Solve() {
-  int answer = 0;
-  string current, previous;
-  while (getline(cin, current) && !current.empty()) {
+int main() {
+  std::int32_t answer{0};
+  std::string previous{};
+  std::string current{};
+  while (std::getline(std::cin, current) && !current.empty()) {
     if (previous.empty()) {
       previous = current;
       continue;
     }
 
-    int a = stoi(previous);
-    int b = stoi(current);
-    if (b > a) {
+    if (IsIncreasing(previous, current)) {
       ++answer;
     }
     previous = current;
   }
-  return answer;
-}
-
-int main() {
-  int count = Solve();
-  cout << count << endl;
+  std::cout << answer << '\n';
 }
