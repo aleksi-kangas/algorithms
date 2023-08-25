@@ -1,60 +1,39 @@
-#include <algorithm>
-#include <bitset>
-#include <cassert>
-#include <climits>
-#include <cmath>
-#include <deque>
-#include <functional>
+#include <charconv>
+#include <cstdint>
 #include <iostream>
-#include <iterator>
-#include <map>
-#include <memory>
-#include <numeric>
-#include <optional>
 #include <queue>
-#include <set>
-#include <sstream>
-#include <stack>
 #include <string>
-#include <tuple>
-#include <unordered_map>
-#include <unordered_set>
-#include <utility>
-#include <vector>
 
-using namespace std;
-
-using ll = long long;
-
-vector<int> ReadDepths() {
-  vector<int> depths;
-  string s;
-  while (getline(cin, s) && !s.empty()) {
-    int a = stoi(s);
-    depths.push_back(a);
-  }
-  return depths;
-}
-
-int Solve() {
-  vector<int> depths = ReadDepths();
-  int answer = 0;
-  constexpr int kWindowSize = 3;
-  for (int i = 0; i < static_cast<int>(depths.size()) - kWindowSize; ++i) {
-    int a = 0;
-    int b = 0;
-    for (int j = i; j < i + kWindowSize; ++j) {
-      a += depths[j];
-      b += depths[j + 1];
-    }
-    if (b > a) {
-      ++answer;
-    }
-  }
-  return answer;
+std::int32_t ParseInt32(std::string_view s) {
+  std::int32_t result{0};
+  auto [_, ec] = std::from_chars(s.data(), s.data() + s.size(), result);
+  if (ec != std::errc{})
+    throw std::runtime_error{"Failed to parse int32_t"};
+  return result;
 }
 
 int main() {
-  int count = Solve();
-  cout << count << endl;
+  constexpr std::size_t kWindowSize = 3;
+  std::int32_t answer{0};
+  std::queue<std::int32_t> q{};
+  std::int32_t sum{0};
+  std::string line{};
+  while (std::getline(std::cin, line) && !line.empty()) {
+    const std::int32_t value = ParseInt32(line);
+    if (q.size() == kWindowSize) {
+      const std::int32_t popped = q.front();
+      q.pop();
+      const std::int32_t previous_sum = sum;
+      sum -= popped;
+      q.push(value);
+      sum += value;
+      if (previous_sum < sum) {
+        ++answer;
+      }
+    } else {
+      q.push(value);
+      sum += value;
+    }
+  }
+  std::cout << answer << '\n';
 }
