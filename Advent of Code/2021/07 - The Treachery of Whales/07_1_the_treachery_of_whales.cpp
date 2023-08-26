@@ -1,38 +1,20 @@
 #include <algorithm>
-#include <bitset>
-#include <cassert>
-#include <climits>
-#include <cmath>
-#include <deque>
-#include <functional>
+#include <cstdint>
 #include <iostream>
-#include <iterator>
-#include <map>
-#include <memory>
-#include <numeric>
-#include <optional>
-#include <queue>
-#include <set>
+#include <ranges>
 #include <sstream>
-#include <stack>
 #include <string>
-#include <tuple>
-#include <unordered_map>
-#include <unordered_set>
-#include <utility>
-#include <vector>
 
-using namespace std;
+// On some platforms, need to redirect input from a file:
+// <executable_name> < <input_file_name>, e.g. 07_1_the_treachery_of_whales < in.txt
 
-using ll = long long;
-
-vector<int> ParseInput() {
-  vector<int> positions;
-  string s;
-  cin >> s;
-  stringstream ss(s);
-  for (int i; ss >> i;) {
-    positions.push_back(i);
+std::vector<std::int32_t> ReadPositions() {
+  std::vector<std::int32_t> positions{};
+  std::string line{};
+  std::cin >> line;
+  std::stringstream ss{line};
+  for (std::int32_t position; ss >> position;) {
+    positions.emplace_back(position);
     if (ss.peek() == ',') {
       ss.ignore();
     }
@@ -40,19 +22,12 @@ vector<int> ParseInput() {
   return positions;
 }
 
-int Solve() {
-  vector<int> positions = ParseInput();
-  sort(positions.begin(), positions.end());
-  int n = static_cast<int>(positions.size());
-  int target = positions[n / 2];
-  int fuel = 0;
-  for (int position : positions) {
-    fuel += abs(target - position);
-  }
-  return fuel;
-}
-
 int main() {
-  auto answer = Solve();
-  cout << answer << endl;
+  auto initial_positions = ReadPositions();
+  const auto n = static_cast<std::int32_t>(initial_positions.size());
+  std::ranges::nth_element(initial_positions, initial_positions.begin() + n / 2);
+  const std::int32_t median = initial_positions[n / 2];
+  std::int32_t answer{0};
+  std::ranges::for_each(initial_positions, [&](std::int32_t position) { answer += std::abs(position - median); });
+  std::cout << answer << std::endl;
 }
