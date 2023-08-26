@@ -1,112 +1,79 @@
 #include <algorithm>
-#include <bitset>
-#include <cassert>
-#include <climits>
-#include <cmath>
-#include <deque>
-#include <functional>
+#include <charconv>
 #include <iostream>
-#include <iterator>
-#include <map>
-#include <memory>
-#include <numeric>
-#include <optional>
-#include <queue>
-#include <set>
-#include <sstream>
-#include <stack>
+#include <ranges>
+#include <stdexcept>
 #include <string>
-#include <tuple>
 #include <unordered_map>
-#include <unordered_set>
 #include <utility>
 #include <vector>
 
-using namespace std;
+using Coordinates = std::pair<std::int32_t, std::int32_t>;
 
-using ll = long long;
-
-struct Coordinates {
-  int x = 0;
-  int y = 0;
+template <>
+struct std::hash<Coordinates> {
+  std::size_t operator()(const Coordinates& c) const {
+    return (std::hash<std::int32_t>()(c.first) ^ (std::hash<std::int32_t>()(c.second) << 1)) >> 1;
+  }
 };
 
-vector<pair<Coordinates, Coordinates>> ParseInput() {
-  vector<pair<Coordinates, Coordinates>> coordinate_pairs;
-  string s;
-  while (getline(cin, s) && !s.empty()) {
-    int i = static_cast<int>(s.find_first_of(','));
-    int j = static_cast<int>(s.find_first_of(' '));
-    Coordinates first;
-    try {
-      first.x = stoi(s.substr(0, i));
-      first.y = stoi(s.substr(i + 1, j));
-    } catch (const invalid_argument& invalid_argument) {
-      return {};
-    }
-
-    i = static_cast<int>(s.find_last_of(' '));
-    j = static_cast<int>(s.find_last_of(','));
-    Coordinates second;
-    try {
-      second.x = stoi(s.substr(i + 1, j));
-      second.y = stoi(s.substr(j + 1));
-    } catch (const invalid_argument& invalid_argument) {
-      return {};
-    }
-    coordinate_pairs.emplace_back(first, second);
-  }
-  return coordinate_pairs;
+Coordinates ParseCoordinates(std::string_view s) {
+  const auto comma_index = s.find(',');
+  if (comma_index == std::string_view::npos)
+    throw std::invalid_argument{"Invalid coordinates"};
+  const auto ParseCoordinate = [&](std::string_view coordinate_s) -> std::int32_t {
+    std::int32_t coordinate{0};
+    const auto [_, ec] = std::from_chars(coordinate_s.data(), coordinate_s.data() + coordinate_s.size(), coordinate);
+    if (ec != std::errc{})
+      throw std::invalid_argument{"Invalid coordinates"};
+    return coordinate;
+  };
+  return {ParseCoordinate(s.substr(0, comma_index)), ParseCoordinate(s.substr(comma_index + 1))};
 }
 
-int FindMax(const vector<pair<Coordinates, Coordinates>>& coordinate_pairs, bool x) {
-  int m = numeric_limits<int>::min();
-  for (auto& p : coordinate_pairs) {
-    if (x) {
-      m = max(m, p.first.x);
-      m = max(m, p.second.x);
-    } else {
-      m = max(m, p.first.y);
-      m = max(m, p.second.y);
-    }
+std::vector<std::pair<Coordinates, Coordinates>> ReadLines() {
+  std::vector<std::pair<Coordinates, Coordinates>> lines{};
+  for (std::string line; std::getline(std::cin, line);) {
+    if (line.empty())
+      break;
+    constexpr auto kArrow{" -> "};
+    constexpr auto kArrowSize{4};
+    const auto arrow_index = line.find(kArrow);
+    if (arrow_index == std::string::npos)
+      throw std::invalid_argument{"Invalid line"};
+    const auto from = ParseCoordinates(line.substr(0, arrow_index));
+    const auto to = ParseCoordinates(line.substr(arrow_index + kArrowSize));
+    lines.emplace_back(from, to);
   }
-  return m;
+  return lines;
 }
 
-int Solve() {
-  vector<pair<Coordinates, Coordinates>> coordinate_pairs = ParseInput();
-  vector<pair<Coordinates, Coordinates>> straight_lines;
-  copy_if(coordinate_pairs.begin(),
-          coordinate_pairs.end(),
-          back_inserter(straight_lines),
-          [](auto& p) { return p.first.x == p.second.x || p.first.y == p.second.y; });
-  int x_max = FindMax(straight_lines, true);
-  int y_max = FindMax(straight_lines, false);
-  vector<vector<int>> m(y_max + 1, vector<int>(x_max + 1));
-  for (auto& p : straight_lines) {
-    if (p.first.x != p.second.x) {
-      for (int i = min(p.first.x, p.second.x); i <= max(p.first.x, p.second.x); ++i) {
-        ++m[p.first.y][i];
-      }
-    } else {
-      for (int i = min(p.first.y, p.second.y); i <= max(p.first.y, p.second.y); ++i) {
-        ++m[i][p.first.x];
-      }
-    }
-  }
+bool IsHorizontal(const Coordinates& from, const Coordinates& to) {
+  return from.second == to.second;
+}
 
-  int count = 0;
-  for (int i = 0; i < static_cast<int>(m.size()); ++i) {
-    for (int j = 0; j < static_cast<int>(m[0].size()); ++j) {
-      if (m[i][j] >= 2) {
-        ++count;
-      }
-    }
-  }
-  return count;
+bool IsVertical(const Coordinates& from, const Coordinates& to) {
+  return from.first == to.first;
 }
 
 int main() {
-  auto answer = Solve();
-  cout << answer << endl;
+  const auto lines = ReadLines();
+  std::unordered_map<Coordinates, std::int32_t> freq{};
+  for (const auto& [from, to] : lines) {
+    if (!IsHorizontal(from, to) && !IsVertical(from, to))
+      continue;
+    for (std::int32_t x = std::min(from.first, to.first); x <= std::max(from.first, to.first); ++x) {
+      for (std::int32_t y = std::min(from.second, to.second); y <= std::max(from.second, to.second); ++y) {
+        ++freq[{x, y}];
+      }
+    }
+  }
+  std::int32_t answer{0};
+  std::ranges::for_each(freq, [&answer](const auto& p) {
+    const auto& [_, count] = p;
+    if (count > 1) {
+      ++answer;
+    }
+  });
+  std::cout << answer << std::endl;
 }
