@@ -1,3 +1,4 @@
+#include <array>
 #include <bitset>
 #include <iostream>
 #include <string>
@@ -9,7 +10,7 @@ int main() {
   std::string line{};
   std::array<std::int32_t, kBits> ones{};
   while (std::getline(std::cin, line) && !line.empty()) {
-    std::bitset<32> bits{line};
+    std::bitset<kBits> bits{line};
     for (std::size_t i = 0; i < kBits; ++i) {
       if (bits[i]) {
         ++ones[i];
@@ -17,8 +18,8 @@ int main() {
     }
     ++count;
   }
-  std::bitset<32> most_common_bits{};
-  std::bitset<32> least_common_bits{};
+  std::bitset<kBits> most_common_bits{};
+  std::bitset<kBits> least_common_bits{};
   for (std::size_t i = 0; i < kBits; ++i) {
     if (ones[i] >= count / 2) {
       most_common_bits[i] = true;
