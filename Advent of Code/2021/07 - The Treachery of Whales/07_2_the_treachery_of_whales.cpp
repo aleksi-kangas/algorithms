@@ -1,38 +1,21 @@
 #include <algorithm>
-#include <bitset>
-#include <cassert>
-#include <climits>
-#include <cmath>
-#include <deque>
-#include <functional>
+#include <cstdint>
 #include <iostream>
-#include <iterator>
-#include <map>
-#include <memory>
-#include <numeric>
-#include <optional>
-#include <queue>
-#include <set>
+#include <limits>
+#include <ranges>
 #include <sstream>
-#include <stack>
 #include <string>
-#include <tuple>
-#include <unordered_map>
-#include <unordered_set>
-#include <utility>
-#include <vector>
 
-using namespace std;
+// On some platforms, need to redirect input from a file:
+// <executable_name> < <input_file_name>, e.g. 07_1_the_treachery_of_whales < in.txt
 
-using ll = long long;
-
-vector<int> ParseInput() {
-  vector<int> positions;
-  string s;
-  cin >> s;
-  stringstream ss(s);
-  for (int i; ss >> i;) {
-    positions.push_back(i);
+std::vector<std::int32_t> ReadPositions() {
+  std::vector<std::int32_t> positions{};
+  std::string line{};
+  std::cin >> line;
+  std::stringstream ss{line};
+  for (std::int32_t position; ss >> position;) {
+    positions.emplace_back(position);
     if (ss.peek() == ',') {
       ss.ignore();
     }
@@ -40,28 +23,19 @@ vector<int> ParseInput() {
   return positions;
 }
 
-ll Solve() {
-  vector<int> positions = ParseInput();
-  int min_pos = numeric_limits<int>::max();
-  int max_pos = numeric_limits<int>::min();
-  for (int x : positions) {
-    min_pos = min(min_pos, x);
-    max_pos = max(max_pos, x);
-  }
-
-  int answer = numeric_limits<int>::max();
-  for (int pos = min_pos; pos <= max_pos; ++pos) {
-    int fuel = 0;
-    for (int x : positions) {
-      int s = abs(x - pos);
-      fuel += s * (s + 1) / 2;
-    }
-    answer = min(answer, fuel);
-  }
-  return answer;
-}
-
 int main() {
-  auto answer = Solve();
-  cout << answer << endl;
+  const auto initial_positions = ReadPositions();
+  const auto [min_it, max_it] = std::ranges::minmax_element(initial_positions);
+  const std::int32_t min = *min_it;
+  const std::int32_t max = *max_it;
+  auto answer = std::numeric_limits<std::int32_t>::max();
+  for (std::int32_t candidate = min; candidate <= max; ++candidate) {
+    std::int32_t sum{0};
+    std::ranges::for_each(initial_positions, [&](std::int32_t p) {
+      const std::int32_t d = std::abs(p - candidate);
+      sum += d * (d + 1) / 2;
+    });
+    answer = std::min(answer, sum);
+  }
+  std::cout << answer << std::endl;
 }
