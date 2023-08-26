@@ -1,69 +1,40 @@
-#include <algorithm>
-#include <bitset>
-#include <cassert>
-#include <climits>
-#include <cmath>
-#include <deque>
-#include <functional>
+#include <array>
+#include <cstdint>
 #include <iostream>
-#include <iterator>
-#include <map>
-#include <memory>
-#include <numeric>
-#include <optional>
-#include <queue>
-#include <set>
 #include <sstream>
-#include <stack>
 #include <string>
-#include <tuple>
-#include <unordered_map>
-#include <unordered_set>
-#include <utility>
-#include <vector>
 
-using namespace std;
-
-using ll = long long;
-
-struct Fish {
-  Fish() : timer(8) {}
-  explicit Fish(int timer) : timer(timer) {}
-  int timer;
-};
-
-vector<Fish> ParseInput() {
-  string s;
-  cin >> s;
-  vector<Fish> fish;
-  stringstream ss(s);
-  for (int i; ss >> i;) {
-    fish.emplace_back(i);
+std::vector<std::int32_t> ReadFishTimers() {
+  std::vector<std::int32_t> fish_timers{};
+  std::string line{};
+  std::cin >> line;
+  std::stringstream ss{line};
+  for (std::int32_t fish_timer; ss >> fish_timer;) {
+    fish_timers.emplace_back(fish_timer);
     if (ss.peek() == ',') {
       ss.ignore();
     }
   }
-  return fish;
-}
-
-int Solve() {
-  vector<Fish> fish = ParseInput();
-  for (int day = 1; day <= 80; ++day) {
-    vector<Fish> new_fish;
-    for (auto& f : fish) {
-      if (f.timer == 0) {
-        f.timer = 6;
-        new_fish.emplace_back();
-      } else {
-        --f.timer;
-      }
-    }
-    fish.insert(fish.end(), new_fish.begin(), new_fish.end());
-  }
-  return static_cast<int>(fish.size());
+  return fish_timers;
 }
 
 int main() {
-  auto answer = Solve();
-  cout << answer << endl;
+  const auto initial_timers = ReadFishTimers();
+  std::array<std::int32_t, 9> timers{};
+  for (int fish_timer : initial_timers) {
+    ++timers[fish_timer];
+  }
+  for (std::size_t d = 1; d <= 80; ++d) {
+    const std::int32_t new_fish_count = timers[0];
+    for (std::size_t i = 0; i < timers.size() - 1; ++i) {
+      timers[i] = timers[i + 1];
+    }
+    timers[6] += new_fish_count;
+    timers[8] = new_fish_count;
+  }
+  std::int64_t answer{0};
+  for (std::int32_t timer : timers) {
+    answer += timer;
+  }
+  std::cout << answer << std::endl;
 }
