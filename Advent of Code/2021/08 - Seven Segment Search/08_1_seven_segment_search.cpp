@@ -1,54 +1,32 @@
-#include <algorithm>
-#include <bitset>
-#include <cassert>
-#include <climits>
-#include <cmath>
-#include <deque>
-#include <functional>
 #include <iostream>
-#include <iterator>
-#include <map>
-#include <memory>
-#include <numeric>
-#include <optional>
-#include <queue>
-#include <set>
 #include <sstream>
-#include <stack>
 #include <string>
-#include <tuple>
-#include <unordered_map>
-#include <unordered_set>
-#include <utility>
-#include <vector>
 
-using namespace std;
-
-using ll = long long;
-
-int Solve() {
-  int answer = 0;
-  string line;
-  while (getline(cin, line) && !line.empty()) {
-    stringstream ss(line);
-    string s;
-    bool delimiter_seen = false;
-    while (ss >> s) {
-      if (s == "|") {
-        delimiter_seen = true;
-        continue;
-      }
-      if (delimiter_seen) {
-        if (s.size() == 2 || s.size() == 3 || s.size() == 4 || s.size() == 7) {
-          ++answer;
-        }
-      }
+std::int32_t CountOutputDigitsWithUnique(std::string_view s) {
+  std::int32_t count{0};
+  const auto delimiter = s.find('|');
+  std::stringstream ss{std::string{s.substr(delimiter + 1)}};
+  for (std::string value; ss >> value;) {
+    switch (value.size()) {
+      case 2:  // 1
+      case 4:  // 4
+      case 3:  // 7
+      case 7:  // 8
+        ++count;
+        break;
+    }
+    if (ss.peek() == ' ') {
+      ss.ignore();
     }
   }
-  return answer;
+  return count;
 }
 
 int main() {
-  auto answer = Solve();
-  cout << answer << endl;
+  std::int32_t answer{0};
+  std::string line{};
+  while (std::getline(std::cin, line) && !line.empty()) {
+    answer += CountOutputDigitsWithUnique(line);
+  }
+  std::cout << answer << std::endl;
 }
