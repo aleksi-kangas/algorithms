@@ -1,104 +1,81 @@
-#include <algorithm>
+#include <array>
 #include <bitset>
-#include <cassert>
-#include <climits>
-#include <cmath>
-#include <deque>
-#include <functional>
 #include <iostream>
-#include <iterator>
-#include <map>
-#include <memory>
-#include <numeric>
-#include <optional>
-#include <queue>
-#include <set>
-#include <sstream>
-#include <stack>
 #include <string>
-#include <tuple>
-#include <unordered_map>
-#include <unordered_set>
-#include <utility>
 #include <vector>
 
-using namespace std;
+constexpr std::size_t kBits{12};
 
-using ll = long long;
+constexpr std::size_t IndexToBitsetIndex(std::size_t index) {
+  return kBits - index - 1;
+}
 
-string Compute(const vector<string>& numbers, bool oxygen) {
-  vector<string> candidates = numbers;
-  // Assuming each number has equivalent amount of bits.
-  int bits = static_cast<int>(numbers[0].size());
-  for (int bit = 0; bit < bits; ++bit) {
-    vector<string> zeros;
-    vector<string> ones;
-    for (const string& number : candidates) {
-      if (number[bit] == '0') {
-        zeros.push_back(number);
+std::bitset<kBits> CommonBits(const std::vector<std::string_view>& binary_numbers, bool most_common) {
+  std::array<std::int32_t, kBits> ones{};
+  std::array<std::int32_t, kBits> zeros{};
+  for (const auto& binary_number : binary_numbers) {
+    for (std::size_t i = 0; i < binary_number.size(); ++i) {
+      if (binary_number[i] == '1') {
+        ++ones[i];
       } else {
-        ones.push_back(number);
+        ++zeros[i];
       }
     }
-
-    candidates.clear();
-
-    if (oxygen) {
-      if (ones.size() >= zeros.size()) {
-        for (string& number : ones) {
-          candidates.push_back(move(number));
-        }
-      } else {
-        for (string& number : zeros) {
-          candidates.push_back(move(number));
-        }
-      }
+  }
+  std::bitset<kBits> common_bits{};
+  for (std::size_t i = 0; i < kBits; ++i) {
+    if (ones[i] > zeros[i]) {
+      common_bits[IndexToBitsetIndex(i)] = most_common;
+    } else if (ones[i] < zeros[i]) {
+      common_bits[IndexToBitsetIndex(i)] = !most_common;
     } else {
-      if (ones.size() < zeros.size()) {
-        for (string& number : ones) {
-          candidates.push_back(move(number));
-        }
-      } else {
-        for (string& number : zeros) {
-          candidates.push_back(move(number));
-        }
-      }
-    }
-    if (candidates.size() == 1) {
-      return candidates[0];
+      common_bits[IndexToBitsetIndex(i)] = most_common;
     }
   }
-  return "";  // Should not reach this ever as long as input is correct.
+  return common_bits;
 }
 
-vector<string> ParseInput() {
-  vector<string> numbers;
-  string s;
-  while (getline(cin, s) && !s.empty()) {
-    numbers.push_back(s);
+std::vector<std::string_view> FilterCandidates(const std::vector<std::string_view>& candidates, std::size_t bit_index,
+                                               bool most_common) {
+  const auto common_bits = CommonBits(candidates, most_common);
+  std::vector<std::string_view> new_candidates{};
+  for (const auto& candidate : candidates) {
+    if (candidate[bit_index] - '0' != common_bits[IndexToBitsetIndex(bit_index)]) {
+      continue;
+    }
+    new_candidates.emplace_back(candidate);
   }
-  return numbers;
+  return new_candidates;
 }
 
-int BitsToDecimal(const string& bits) {
-  int result = 0;
-  for (char bit : bits) {
-    result <<= 1;
-    result |= bit - '0';
+std::pair<std::bitset<kBits>, std::bitset<kBits>> Ratings(const std::vector<std::string>& binary_numbers) {
+  std::vector<std::string_view> oxygen_generator_rating_candidates(binary_numbers.begin(), binary_numbers.end());
+  std::vector<std::string_view> co2_scrubber_rating_candidates(binary_numbers.begin(), binary_numbers.end());
+  const auto IsSolution = [&]() -> bool {
+    return oxygen_generator_rating_candidates.size() == 1 && co2_scrubber_rating_candidates.size() == 1;
+  };
+  for (std::size_t i = 0; i < kBits; ++i) {
+    if (oxygen_generator_rating_candidates.size() > 1) {
+      oxygen_generator_rating_candidates = FilterCandidates(oxygen_generator_rating_candidates, i, true);
+    }
+    if (co2_scrubber_rating_candidates.size() > 1) {
+      co2_scrubber_rating_candidates = FilterCandidates(co2_scrubber_rating_candidates, i, false);
+    }
+    if (IsSolution()) {
+      break;
+    }
   }
-  return result;
-}
-
-int Solve() {
-  vector<string> numbers = ParseInput();
-  string oxygen = Compute(numbers, true);
-  int oxygen_decimal = BitsToDecimal(oxygen);
-  string carbon_dioxide = Compute(numbers, false);
-  int carbon_dioxide_decimal = BitsToDecimal(carbon_dioxide);
-  return oxygen_decimal * carbon_dioxide_decimal;
+  return IsSolution() ? std::make_pair(std::bitset<kBits>{std::string{oxygen_generator_rating_candidates[0]}},
+                                       std::bitset<kBits>{std::string{co2_scrubber_rating_candidates[0]}})
+                      : std::make_pair(std::bitset<kBits>{}, std::bitset<kBits>{});
 }
 
 int main() {
-  int multiplication = Solve();
-  cout << multiplication << endl;
+  std::string line{};
+  std::vector<std::string> binary_numbers{};
+  while (std::getline(std::cin, line) && !line.empty()) {
+    binary_numbers.emplace_back(line);
+  }
+  const auto [oxygen_generator_rating, co2_scrubber_rating] = Ratings(binary_numbers);
+  std::cout << oxygen_generator_rating.to_ulong() * co2_scrubber_rating.to_ulong() << std::endl;
 }
