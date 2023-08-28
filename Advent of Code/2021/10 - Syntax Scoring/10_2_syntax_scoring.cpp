@@ -1,86 +1,87 @@
 #include <algorithm>
-#include <bitset>
-#include <cassert>
-#include <climits>
-#include <cmath>
-#include <deque>
-#include <functional>
+#include <cstdint>
 #include <iostream>
-#include <iterator>
-#include <map>
-#include <memory>
-#include <numeric>
-#include <optional>
-#include <queue>
-#include <set>
-#include <sstream>
 #include <stack>
+#include <stdexcept>
 #include <string>
-#include <tuple>
-#include <unordered_map>
-#include <unordered_set>
-#include <utility>
 #include <vector>
 
-using namespace std;
-
-using ll = long long;
-
-vector<string> ParseInput() {
-  vector<string> lines;
-  string s;
-  while (getline(cin, s) && !s.empty()) {
-    lines.push_back(move(s));
+bool IsCorrupt(char close, char open) {
+  switch (close) {
+    case ')':
+      return open != '(';
+    case ']':
+      return open != '[';
+    case '}':
+      return open != '{';
+    case '>':
+      return open != '<';
+    default:
+      throw std::runtime_error{"Invalid character"};
   }
-  return lines;
 }
 
-ll Solve() {
-  vector<string> lines = ParseInput();
-  vector<ll> scores;
-  for (const auto& line : lines) {
-    ll score = 0;
-    stack<char> s;
-    bool corrupt = false;
-    for (char c : line) {
-      bool is_opening = c == '(' || c == '[' || c == '{' || c == '<';
-      if (is_opening) s.push(c);
-      else {
-        if (s.empty()) {
-          corrupt = true;
-          break;
-        }
-        char opening = s.top();
-        bool is_matching = (c == ')' && opening == '(') ||
-            (c == ']' && opening == '[') ||
-            (c == '}' && opening == '{') ||
-            (c == '>' && opening == '<');
-        if (is_matching) s.pop();
-        else {
-          corrupt = true;
-          break;
-        }
-      }
-    }
-    if (!corrupt) {
-      while (!s.empty()) {
-        char opening = s.top();
-        s.pop();
-        score *= 5;
-        if (opening == '(') score += 1;
-        else if (opening == '[') score += 2;
-        else if (opening == '{') score += 3;
-        else if (opening == '<') score += 4;
-      }
-      scores.push_back(score);
+std::int64_t CompletionPenalty(std::stack<char>& s) {
+  std::int64_t penalty{0};
+  while (!s.empty()) {
+    penalty *= 5;
+    const char c = s.top();
+    s.pop();
+    switch (c) {
+      case '(':
+        penalty += 1;
+        break;
+      case '[':
+        penalty += 2;
+        break;
+      case '{':
+        penalty += 3;
+        break;
+      case '<':
+        penalty += 4;
+        break;
+      default:
+        throw std::runtime_error{"Invalid character"};
     }
   }
-
-  sort(scores.begin(), scores.end());
-  return scores[scores.size() / 2];
+  return penalty;
 }
 
 int main() {
-  auto answer = Solve();
-  cout << answer << endl;
+  std::vector<std::int64_t> penalties{};
+  std::string line{};
+  while (std::getline(std::cin, line) && !line.empty()) {
+    std::stack<char> s{};
+    bool is_corrupt{false};
+    for (const char c : line) {
+      if (is_corrupt)
+        break;
+      switch (c) {
+        case '(':
+        case '[':
+        case '{':
+        case '<': {
+          s.push(c);
+        } break;
+        case ')':
+        case ']':
+        case '}':
+        case '>': {
+          const char open = s.top();
+          s.pop();
+          if (IsCorrupt(c, open)) {
+            is_corrupt = true;
+            break;
+          }
+        } break;
+        default:
+          throw std::runtime_error{"Invalid character"};
+      }
+    }
+    if (!is_corrupt) {
+      penalties.push_back(CompletionPenalty(s));
+    }
+  }
+  std::sort(penalties.begin(), penalties.end());
+  std::cout << penalties[penalties.size() / 2] << '\n';
 }
