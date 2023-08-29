@@ -1,65 +1,70 @@
 #include <algorithm>
-#include <bitset>
-#include <cassert>
-#include <climits>
-#include <cmath>
-#include <deque>
-#include <functional>
 #include <iostream>
-#include <iterator>
-#include <map>
-#include <memory>
-#include <numeric>
-#include <optional>
-#include <queue>
-#include <set>
-#include <sstream>
-#include <stack>
+#include <ranges>
 #include <string>
-#include <tuple>
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
 #include <vector>
 
-using namespace std;
-
-using ll = long long;
-
-unordered_map<string, unordered_set<string>> ParseInput() {
-  unordered_map<string, unordered_set<string>> m;
-  string s;
-  while (getline(cin, s) && !s.empty()) {
-    constexpr char delimiter = '-';
-    string begin = s.substr(0, s.find(delimiter));
-    string end = s.substr(s.find(delimiter) + 1);
-    m[begin].insert(end);
-    m[end].insert(begin);
-  }
-  return m;
+bool IsLower(std::string_view s) {
+  return std::ranges::all_of(s, [](char c) { return std::islower(c); });
 }
 
-int DFS(const string& u, unordered_map<string, unordered_set<string>>& m, const set<string>& visited) {
-  if (u == "end") return 1;
-  if (all_of(u.begin(), u.end(), [](auto c) { return islower(c); }) && visited.count(u)) return 0;
-  // Must create a copy for child calls.
-  set<string> new_visited = visited;
-  new_visited.insert(u);
-  int paths = 0;
-  for (const auto& v : m[u]) {
-    paths += DFS(v, m, new_visited);
+struct Cave {
+  bool is_small{false};
+  std::string name{};
+  std::vector<Cave*> neighbors{};
+  explicit Cave(std::string name) : is_small{IsLower(name)}, name{std::move(name)} {}
+};
+
+std::unordered_map<std::string, std::unique_ptr<Cave>> ReadGraph() {
+  std::unordered_map<std::string, std::unique_ptr<Cave>> g{};
+  std::string line{};
+  while (std::getline(std::cin, line) && !line.empty()) {
+    const auto hyphen_index = line.find('-');
+    const std::string from_name = line.substr(0, hyphen_index);
+    const std::string to_name = line.substr(hyphen_index + 1);
+    Cave* from{nullptr};
+    Cave* to{nullptr};
+    if (const auto it = g.find(from_name); it != g.end()) {
+      from = it->second.get();
+    } else {
+      g[from_name] = std::make_unique<Cave>(from_name);
+      from = g[from_name].get();
+    }
+    if (const auto it = g.find(to_name); it != g.end()) {
+      to = it->second.get();
+    } else {
+      g[to_name] = std::make_unique<Cave>(to_name);
+      to = g[to_name].get();
+    }
+    from->neighbors.emplace_back(to);
+    to->neighbors.emplace_back(from);
   }
-  return paths;
+  return g;
 }
 
-int Solve() {
-  unordered_map<string, unordered_set<string>> m = ParseInput();
-  set<string> visited;
-  const int paths = DFS("start", m, visited);
-  return paths;
+std::int32_t CountPaths(const std::unordered_map<std::string, std::unique_ptr<Cave>>& g,
+                        const std::unordered_set<std::string_view>& visited, const Cave* current, const Cave* target) {
+  if (current == target)
+    return 1;
+  if (visited.contains(current->name))
+    return 0;
+  std::unordered_set<std::string_view> sub_visited = visited;
+  if (current->is_small) {
+    sub_visited.insert(current->name);
+  }
+  std::int32_t sub_paths{0};
+  for (const auto neighbor : current->neighbors) {
+    sub_paths += CountPaths(g, sub_visited, neighbor, target);
+  }
+  return sub_paths;
 }
 
 int main() {
-  auto answer = Solve();
-  cout << answer << endl;
+  const auto g = ReadGraph();
+  std::unordered_set<std::string_view> visited{};
+  const std::int32_t paths = CountPaths(g, visited, g.at("start").get(), g.at("end").get());
+  std::cout << paths << '\n';
 }
