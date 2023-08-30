@@ -1,85 +1,80 @@
-#include <algorithm>
-#include <bitset>
-#include <cassert>
-#include <climits>
-#include <cmath>
-#include <deque>
-#include <functional>
+#include <cstdint>
 #include <iostream>
-#include <iterator>
-#include <map>
-#include <memory>
-#include <numeric>
-#include <optional>
-#include <queue>
-#include <set>
-#include <sstream>
-#include <stack>
+#include <limits>
+#include <stdexcept>
 #include <string>
-#include <tuple>
 #include <unordered_map>
-#include <unordered_set>
 #include <utility>
-#include <vector>
 
-using namespace std;
-
-using ll = long long;
-
-map<pair<char, char>, char> ParseInsertionRules() {
-  map<pair<char, char>, char> insertion_rules;
-  string s;
-  while (getline(cin, s) && !s.empty()) {
-    char a = s[0];
-    char b = s[1];
-    char c = s[s.size() - 1];
-    insertion_rules.emplace(make_pair(a, b), c);
+template <>
+struct std::hash<std::pair<char, char>> {
+  std::size_t operator()(const std::pair<char, char>& p) const noexcept {
+    const std::size_t h1 = std::hash<char>{}(p.first);
+    const std::size_t h2 = std::hash<char>{}(p.second);
+    return h1 ^ (h2 << 1);
   }
-  return insertion_rules;
+};
+
+std::unordered_map<std::pair<char, char>, std::int64_t> ReadInitialFrequencies() {
+  std::unordered_map<std::pair<char, char>, std::int64_t> frequencies{};
+  std::string line{};
+  std::getline(std::cin, line);
+  for (std::size_t i = 1; i < line.size(); ++i) {
+    ++frequencies[{line[i - 1], line[i]}];
+  }
+  return frequencies;
 }
 
-ll Solve() {
-  string base;
-  cin >> base;
-  cin.ignore(numeric_limits<streamsize>::max(), '\n');
-  cin.get();
-  map<pair<char, char>, char> insertion_rules = ParseInsertionRules();
-
-  map<pair<char, char>, ll> counts;
-  for (int i = 0; i < base.size() - 1; ++i) {
-    char a = base[i];
-    char b = base[i + 1];
-    ++counts[make_pair(a, b)];
+std::unordered_map<std::pair<char, char>, char> ReadInsertionRules() {
+  std::unordered_map<std::pair<char, char>, char> rules{};
+  std::string line{};
+  while (std::getline(std::cin, line) && !line.empty()) {
+    constexpr std::string_view kArrow{" -> "};
+    const auto arrow_index = line.find(kArrow);
+    if (arrow_index == std::string::npos)
+      throw std::invalid_argument{"Invalid rule"};
+    rules[{line[0], line[1]}] = line[arrow_index + kArrow.size()];
   }
+  return rules;
+}
 
-  for (int i = 0; i < 40; ++i) {
-    map<pair<char, char>, ll> new_counts;
-    for (const auto &[pair, count] : counts) {
-      const char c = insertion_rules[pair];
-      char a = pair.first;
-      new_counts[make_pair(a, c)] += count;
-      char b = pair.second;
-      new_counts[make_pair(c, b)] += count;
+void InsertionStep(std::unordered_map<std::pair<char, char>, std::int64_t>& frequencies,
+                   const std::unordered_map<std::pair<char, char>, char>& rules) {
+  std::unordered_map<std::pair<char, char>, std::int64_t> new_frequencies{};
+  for (const auto& [pair, frequency] : frequencies) {
+    if (const auto it = rules.find(pair); it != rules.end()) {
+      new_frequencies[{pair.first, it->second}] += frequency;
+      new_frequencies[{it->second, pair.second}] += frequency;
+    } else {
+      new_frequencies[pair] = frequency;
     }
-    counts = std::move(new_counts);
   }
+  frequencies = std::move(new_frequencies);
+}
 
-  unordered_map<char, ll> freq;
-  for (const auto &[pair, count] : counts) {
-    freq[pair.first] += count;
-    freq[pair.second] += count;
+std::pair<std::int64_t, std::int64_t> MinMaxFrequency(
+    const std::unordered_map<std::pair<char, char>, std::int64_t>& frequencies) {
+  std::unordered_map<char, std::int64_t> frequency{};
+  for (const auto& [pair, f] : frequencies) {
+    frequency[pair.first] += f;
+    frequency[pair.second] += f;
   }
-  ll minimum = numeric_limits<ll>::max();
-  ll maximum = 0;
-  for (const auto &[c, f] : freq) {
-    minimum = min(minimum, (f + 1) / 2);
-    maximum = max(maximum, (f + 1) / 2);
+  std::int64_t min_frequency{std::numeric_limits<std::int64_t>::max()};
+  std::int64_t max_frequency{std::numeric_limits<std::int64_t>::min()};
+  for (const auto [_, f] : frequency) {
+    min_frequency = std::min(min_frequency, (f + 1) / 2);
+    max_frequency = std::max(max_frequency, (f + 1) / 2);
   }
-
-  return maximum - minimum;
+  return {min_frequency, max_frequency};
 }
 
 int main() {
-  auto answer = Solve();
-  cout << answer << endl;
+  auto frequencies = ReadInitialFrequencies();
+  std::cin.ignore();
+  const auto rules = ReadInsertionRules();
+  for (std::size_t step = 1; step <= 40; ++step) {
+    InsertionStep(frequencies, rules);
+  }
+  const auto [min_frequency, max_frequency] = MinMaxFrequency(frequencies);
+  std::cout << max_frequency - min_frequency << '\n';
 }
