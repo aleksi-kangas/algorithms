@@ -1,107 +1,99 @@
-#include <algorithm>
-#include <bitset>
-#include <cassert>
-#include <climits>
-#include <cmath>
-#include <deque>
-#include <functional>
+#include <compare>
+#include <cstdint>
 #include <iostream>
-#include <iterator>
-#include <map>
-#include <memory>
-#include <numeric>
-#include <optional>
-#include <queue>
-#include <set>
-#include <sstream>
-#include <stack>
+#include <ranges>
+#include <stdexcept>
 #include <string>
-#include <tuple>
-#include <unordered_map>
 #include <unordered_set>
-#include <utility>
-#include <vector>
 
-using namespace std;
+enum class Direction { x, y };
 
-using ll = long long;
+struct FoldInstruction {
+  Direction direction{Direction::x};
+  std::int32_t value{0};
+};
 
-enum class Direction { X, Y };
+struct Point {
+  std::int32_t x{0};
+  std::int32_t y{0};
+  auto operator<=>(const Point&) const = default;
+};
 
-vector<pair<int, int>> ReadDots() {
-  vector<pair<int, int>> dots;
-  string s;
-  while (getline(cin, s) && !s.empty()) {
-    auto comma = s.find(',');
-    int a = stoi(s.substr(0, comma));
-    int b = stoi(s.substr(comma + 1));
-    dots.emplace_back(a, b);
+template <>
+struct std::hash<Point> {
+  std::size_t operator()(const Point& p) const noexcept {
+    const std::size_t h1 = std::hash<std::int32_t>{}(p.x);
+    const std::size_t h2 = std::hash<std::int32_t>{}(p.y);
+    return h1 ^ (h2 << 1);
   }
-  return dots;
+};
+
+std::unordered_set<Point> ReadPoints() {
+  std::unordered_set<Point> points{};
+  std::string line{};
+  while (std::getline(std::cin, line) && !line.empty()) {
+    const auto comma_index = line.find(',');
+    Point point{
+        .x = std::stoi(line.substr(0, comma_index)),
+        .y = std::stoi(line.substr(comma_index + 1)),
+    };
+    points.insert(point);
+  }
+  return points;
 }
 
-vector<pair<Direction, int>> ReadFolds() {
-  vector<pair<Direction, int>> folds;
-  string s;
-  while (getline(cin, s) && !s.empty()) {
-    auto equals = s.find('=');
-    Direction direction = s[equals - 1] == 'x' ? Direction::X : Direction::Y;
-    int value = stoi(s.substr(equals + 1));
-    folds.emplace_back(direction, value);
-  }
-  return folds;
-}
-
-void Fold(const pair<Direction, int> &fold, vector<pair<int, int>> &dots) {
-  for (auto &[x, y] : dots) {
-    switch (fold.first) {
-      case Direction::X:
-        if (x > fold.second) {
-          x = fold.second - (x - fold.second);
-        }
+std::vector<FoldInstruction> ReadFoldInstructions() {
+  std::vector<FoldInstruction> instructions{};
+  std::string line{};
+  while (std::getline(std::cin, line) && !line.empty()) {
+    FoldInstruction instruction{};
+    const auto equals_index = line.find('=');
+    if (equals_index == std::string::npos)
+      throw std::invalid_argument{"Invalid instruction"};
+    switch (line[equals_index - 1]) {
+      case 'x':
+        instruction.direction = Direction::x;
         break;
-      case Direction::Y:
-        if (y > fold.second) {
-          y = fold.second - (y - fold.second);
-        }
+      case 'y':
+        instruction.direction = Direction::y;
+        break;
+      default:
+        throw std::invalid_argument{"Invalid direction"};
+    }
+    instruction.value = std::stoi(line.substr(equals_index + 1));
+    instructions.emplace_back(instruction);
+  }
+  return instructions;
+}
+
+void Fold(std::unordered_set<Point>& points, FoldInstruction instruction) {
+  std::unordered_set<Point> new_points{};
+  std::ranges::copy_if(points, std::inserter(new_points, new_points.end()), [&](const auto& point) {
+    switch (instruction.direction) {
+      case Direction::x:
+        return point.x <= instruction.value;
+      case Direction::y:
+        return point.y <= instruction.value;
+    }
+  });
+  for (const auto& point : points) {
+    if (new_points.contains(point))
+      continue;
+    switch (instruction.direction) {
+      case Direction::x:
+        new_points.insert(Point{.x = instruction.value - (point.x - instruction.value), .y = point.y});
+        break;
+      case Direction::y:
+        new_points.insert(Point{.x = point.x, .y = instruction.value - (point.y - instruction.value)});
         break;
     }
   }
-}
-
-pair<int, int> FindMax(const vector<pair<int, int>> &dots) {
-  int x = numeric_limits<int>::min();
-  int y = numeric_limits<int>::min();
-  for (const auto &d : dots) {
-    x = max(x, d.first);
-    y = max(y, d.second);
-  }
-  return {x, y};
-}
-
-int Solve() {
-  vector<pair<int, int>> dots = ReadDots();
-  vector<pair<Direction, int>> folds = ReadFolds();
-
-  Fold(folds.front(), dots);
-
-  auto[x_max, y_max] = FindMax(dots);
-  vector<vector<int>> a(y_max + 1, vector<int>(x_max + 1));
-  for (const auto &[x, y] : dots) {
-    a[y][x] = 1;
-  }
-  int count = 0;
-  for (int i = 0; i <= y_max; ++i) {
-    for (int j = 0; j <= x_max; ++j) {
-      if (a[i][j] == 1) {
-        ++count;
-      }
-    }
-  }
-  return count;
+  points = std::move(new_points);
 }
 
 int main() {
-  auto answer = Solve();
-  cout << answer << endl;
+  auto points = ReadPoints();
+  const auto instructions = ReadFoldInstructions();
+  Fold(points, instructions[0]);
+  std::cout << points.size() << '\n';
 }
