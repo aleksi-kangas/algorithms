@@ -45,8 +45,7 @@ std::unordered_map<std::string, std::unique_ptr<Cave>> ReadGraph() {
   return g;
 }
 
-std::int32_t CountPaths(const std::unordered_map<std::string, std::unique_ptr<Cave>>& g,
-                        const std::unordered_set<std::string_view>& visited, const Cave* current, const Cave* target) {
+std::int32_t CountPaths(const std::unordered_set<std::string_view>& visited, const Cave* current, const Cave* target) {
   if (current == target)
     return 1;
   if (visited.contains(current->name))
@@ -57,7 +56,7 @@ std::int32_t CountPaths(const std::unordered_map<std::string, std::unique_ptr<Ca
   }
   std::int32_t sub_paths{0};
   for (const auto neighbor : current->neighbors) {
-    sub_paths += CountPaths(g, sub_visited, neighbor, target);
+    sub_paths += CountPaths(sub_visited, neighbor, target);
   }
   return sub_paths;
 }
@@ -65,6 +64,6 @@ std::int32_t CountPaths(const std::unordered_map<std::string, std::unique_ptr<Ca
 int main() {
   const auto g = ReadGraph();
   std::unordered_set<std::string_view> visited{};
-  const std::int32_t paths = CountPaths(g, visited, g.at("start").get(), g.at("end").get());
+  const std::int32_t paths = CountPaths(visited, g.at("start").get(), g.at("end").get());
   std::cout << paths << '\n';
 }
