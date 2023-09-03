@@ -1,77 +1,58 @@
-#include <algorithm>
-#include <bitset>
-#include <cassert>
-#include <climits>
-#include <cmath>
-#include <deque>
-#include <functional>
-#include <iomanip>
+#include <cstdint>
 #include <iostream>
-#include <iterator>
-#include <map>
-#include <memory>
-#include <numeric>
-#include <optional>
-#include <queue>
-#include <set>
-#include <sstream>
-#include <stack>
 #include <string>
-#include <tuple>
-#include <unordered_map>
-#include <unordered_set>
 #include <utility>
-#include <variant>
-#include <vector>
 
-using namespace std;
-
-using ll = long long;
-
-pair<int, int> ParseStartingPositions() {
-  string s;
-  getline(cin, s);
-  int p1 = stoi(s.substr(s.find(':') + 1));
-  getline(cin, s);
-  int p2 = stoi(s.substr(s.find(':') + 1));
-  return {p1, p2};
+std::pair<std::int32_t, std::int32_t> ReadInitialPositions() {
+  std::string p1{};
+  std::getline(std::cin, p1);
+  const auto p1_colon_index = p1.find(':');
+  std::string p2{};
+  std::getline(std::cin, p2);
+  const auto p2_colon_index = p2.find(':');
+  return {std::stoi(p1.substr(p1_colon_index + 2)), std::stoi(p2.substr(p2_colon_index + 2))};
 }
 
-int PlayTurn(int& dice) {
-  int s = 0;
-  for (int i = 0; i < 3; ++i) {
-    s += dice++;
-    if (dice == 101) dice = 1;
-  }
-  return s;
-}
-
-int Solve() {
-  auto [p1, p2] = ParseStartingPositions();
-  int round = 0;
-  int dice = 1;
-  int p1_score = 0, p2_score = 0;
-  bool p1_plays = true;
-  while (p1_score < 1000 && p2_score < 1000) {
-    ++round;
-    if (p1_plays) {
-      p1 += PlayTurn(dice);
-      p1 %= 10;
-      if (p1 == 0) p1 = 10;
-      p1_score += p1;
-      p1_plays = false;
-    } else {
-      p2 += PlayTurn(dice);
-      p2 %= 10;
-      if (p2 == 0) p2 = 10;
-      p2_score += p2;
-      p1_plays = true;
+std::pair<std::int32_t, std::int32_t> Play(std::pair<std::int32_t, std::int32_t> initial_positions,
+                                           std::int32_t target_score, std::int32_t& roll_count) {
+  roll_count = 0;
+  std::pair<std::int32_t, std::int32_t> positions = std::move(initial_positions);
+  std::pair<std::int32_t, std::int32_t> scores{};
+  std::int32_t dice{1};
+  bool p1{true};
+  while (scores.first < target_score && scores.second < target_score) {
+    std::int32_t moves{0};
+    for (std::int32_t i = 1; i <= 3; ++i) {
+      moves += dice++;
+      if (dice == 101) {
+        dice = 1;
+      }
+      ++roll_count;
     }
+    if (p1) {
+      positions.first += moves;
+      positions.first %= 10;
+      if (positions.first == 0) {
+        positions.first = 10;
+      }
+      scores.first += positions.first;
+    } else {
+      positions.second += moves;
+      positions.second %= 10;
+      if (positions.second == 0) {
+        positions.second = 10;
+      }
+      scores.second += positions.second;
+    }
+    p1 = !p1;
   }
-  return (p1_score > p2_score ? p2_score : p1_score) * round * 3;
+  return scores;
 }
 
 int main() {
-  auto answer = Solve();
-  cout << answer << endl;
+  const auto initial_positions = ReadInitialPositions();
+  std::int32_t roll_count{0};
+  const auto [p1_score, p2_score] = Play(initial_positions, 1000, roll_count);
+  const auto answer = std::min(p1_score, p2_score) * roll_count;
+  std::cout << answer << '\n';
 }
