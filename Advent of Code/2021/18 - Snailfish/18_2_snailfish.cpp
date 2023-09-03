@@ -1,104 +1,85 @@
 #include <algorithm>
-#include <bitset>
-#include <cassert>
-#include <climits>
-#include <cmath>
-#include <deque>
-#include <functional>
+#include <cstdint>
 #include <iostream>
-#include <iterator>
-#include <map>
 #include <memory>
-#include <numeric>
-#include <optional>
-#include <queue>
-#include <set>
-#include <sstream>
-#include <stack>
+#include <stdexcept>
 #include <string>
-#include <tuple>
-#include <unordered_map>
-#include <unordered_set>
-#include <utility>
-#include <variant>
 #include <vector>
 
-using namespace std;
-
-using ll = long long;
-
 struct Node {
-  int value = -1;
-  shared_ptr<Node> parent = nullptr;
-  shared_ptr<Node> left = nullptr;
-  shared_ptr<Node> right = nullptr;
-  bool IsLeaf() { return !left && !right; }
+  Node* parent{nullptr};
+  std::unique_ptr<Node> left{nullptr};
+  std::unique_ptr<Node> right{nullptr};
+  std::int32_t value{0};
+
+  [[nodiscard]] bool HasLeft() const { return left != nullptr; }
+  [[nodiscard]] bool HasRight() const { return right != nullptr; }
+  [[nodiscard]] bool HasChildren() const { return HasLeft() || HasRight(); }
 };
 
-shared_ptr<Node> ParseNumber(const string& s) {
-  auto root = make_shared<Node>();
-
-  shared_ptr<Node> current = root;
-  for (char c : s) {
-    if (c == '[') {
-      auto node = make_shared<Node>();
-      node->parent = current;
-      current->left = node;
-      current = node;
-    } else if (c == ']') {
-      current = current->parent;
-    } else if (c == ',') {
-      current = current->parent;
-      auto node = make_shared<Node>();
-      node->parent = current;
-      current->right = node;
-      current = node;
-    } else if (isdigit(c)) {
-      if (current->value > 0) {
-        current->value *= 10;
-        current->value += c - '0';
-      } else {
-        current->value = c - '0';
-      }
-    } else {
-      assert(false);
+std::unique_ptr<Node> ReadNumber(std::string_view s) {
+  auto root = std::make_unique<Node>();
+  Node* current = root.get();
+  for (const char c : s) {
+    switch (c) {
+      case '[': {
+        current->left = std::make_unique<Node>();
+        current->left->parent = current;
+        current = current->left.get();
+      } break;
+      case ']': {
+        current = current->parent;
+      } break;
+      case ',': {
+        current->parent->right = std::make_unique<Node>();
+        current->parent->right->parent = current->parent;
+        current = current->parent->right.get();
+      } break;
+      case '0':
+      case '1':
+      case '2':
+      case '3':
+      case '4':
+      case '5':
+      case '6':
+      case '7':
+      case '8':
+      case '9': {
+        if (current->value > 0) {
+          current->value *= 10;
+          current->value += c - '0';
+        } else {
+          current->value = c - '0';
+        }
+      } break;
+      default:
+        throw std::runtime_error{"Invalid character"};
     }
   }
   return root;
 }
 
-void PrintNumber(Node* root) {
-  if (root->IsLeaf()) {
-    cout << root->value;
-  } else {
-    cout << '[';
-    PrintNumber(root->left.get());
-    cout << ',';
-    PrintNumber(root->right.get());
-    cout << ']';
-  }
-}
-
-vector<shared_ptr<Node>> ParseNumbers() {
-  vector<shared_ptr<Node>> numbers;
-  string s;
-  while (getline(cin, s) && !s.empty()) {
-    numbers.push_back(ParseNumber(s));
+std::vector<std::unique_ptr<Node>> ReadNumbers() {
+  std::vector<std::unique_ptr<Node>> numbers{};
+  std::string line{};
+  while (std::getline(std::cin, line) && !line.empty()) {
+    numbers.push_back(ReadNumber(line));
   }
   return numbers;
 }
 
 Node* FindPreviousLeaf(Node* node) {
   Node* current = node;
-  // Walk up until current is a right child
+  // Traverse up until current becomes a right child.
   while (current->parent && current->parent->left.get() == current) {
-    current = current->parent.get();
+    current = current->parent;
   }
-  // Jump to the parent's left child
-  if (!current->parent || !current->parent->left) return nullptr;
+  // Jump to the left child of the parent.
+  if (!current->parent || !current->parent->left)
+    return nullptr;
   current = current->parent->left.get();
-  // Walk down-right until current is a leaf
-  while (current->right) {
+  // Traverse down until the rightmost leaf.
+  while (current->HasRight()) {
     current = current->right.get();
   }
   return current;
@@ -106,138 +87,136 @@ Node* FindPreviousLeaf(Node* node) {
 
 Node* FindNextLeaf(Node* node) {
   Node* current = node;
-  // Walk up until current is a left child
+  // Traverse up until current becomes a left child.
   while (current->parent && current->parent->right.get() == current) {
-    current = current->parent.get();
+    current = current->parent;
   }
-  // Jump to the parent's right child
-  if (!current->parent || !current->parent->right) {
+  // Jump to the right child of the parent.
+  if (!current->parent || !current->parent->right)
     return nullptr;
-  }
   current = current->parent->right.get();
-  // Walk down-left until current is a leaf
-  while (current->left) {
+  // Traverse down until the leftmost leaf.
+  while (current->HasLeft()) {
     current = current->left.get();
   }
   return current;
 }
 
-bool Explode(Node* node, int depth) {
-  bool exploded = false;
-  if (node->left) {
-    exploded |= Explode(node->left.get(), depth + 1);
+bool Explode(Node* node, std::size_t depth = 0) {
+  if (node->HasLeft()) {
+    if (Explode(node->left.get(), depth + 1))
+      return true;
   }
-  const bool is_left_leaf = node->left && node->left->IsLeaf();
-  const bool is_right_leaf = node->right && node->right->IsLeaf();
-  if (is_left_leaf && is_right_leaf && depth >= 4) {
-    Node* previous_leaf = FindPreviousLeaf(node);
-    if (previous_leaf) {
-      previous_leaf->value += node->left->value;
+  if (depth >= 4) {
+    const bool is_left_leaf = node->HasLeft() && !node->left->HasChildren();
+    const bool is_right_left = node->HasRight() && !node->right->HasChildren();
+    if (is_left_leaf && is_right_left) {
+      Node* previous_leaf = FindPreviousLeaf(node);
+      if (previous_leaf != nullptr) {
+        previous_leaf->value += node->left->value;
+      }
+      Node* next_leaf = FindNextLeaf(node);
+      if (next_leaf != nullptr) {
+        next_leaf->value += node->right->value;
+      }
+      node->value = 0;
+      node->left = nullptr;
+      node->right = nullptr;
+      return true;
     }
-    Node* next_leaf = FindNextLeaf(node);
-    if (next_leaf) {
-      next_leaf->value += node->right->value;
-    }
+  }
+  if (node->HasRight())
+    return Explode(node->right.get(), depth + 1);
+  return false;
+}
+
+bool Split(Node* node) {
+  if (!node->HasChildren() && node->value >= 10) {
+    node->left = std::make_unique<Node>();
+    node->left->parent = node;
+    node->left->value = node->value / 2;
+    node->right = std::make_unique<Node>();
+    node->right->parent = node;
+    node->right->value = (node->value + 1) / 2;
     node->value = 0;
-    node->left = nullptr;
-    node->right = nullptr;
-    exploded = true;
+    return true;
   }
-  if (!exploded && node->right) {
-    exploded |= Explode(node->right.get(), depth + 1);
-  }
-  return exploded;
-}
-
-bool Split(const shared_ptr<Node>& node) {
-  bool split = false;
-  if (node->left) {
-    split |= Split(node->left);
-  }
-  if (node->IsLeaf() && node->value >= 10) {
-    auto left = make_shared<Node>();
-    left->value = floor(node->value / 2.0);
-    left->parent = node;
-    node->left = left;
-    auto right = make_shared<Node>();
-    right->value = ceil(node->value / 2.0);
-    right->parent = node;
-    node->right = right;
-    node->value = -1;
-    split = true;
-  }
-  if (!split && node->right) {
-    split |= Split(node->right);
-  }
-  return split;
-}
-
-void Reduce(const shared_ptr<Node>& root) {
-  while (true) {
-    bool reduced = Explode(root.get(), 0);
-    if (!reduced) {
-      reduced = Split(root);
+  if (node->HasLeft()) {
+    if (Split(node->left.get()))
+      return true;
+    if (node->HasRight()) {
+      return Split(node->right.get());
     }
-    if (!reduced) break;
+  }
+  return false;
+}
+
+void Reduce(Node* root) {
+  bool reduced{false};
+  while (!reduced) {
+    // If any pair is nested inside four pairs, the leftmost such pair explodes.
+    const bool exploded = Explode(root);
+    if (!exploded) {
+      // If any regular number is 10 or greater, the leftmost such regular number splits.
+      const bool split = Split(root);
+      if (!split) {
+        reduced = true;
+      }
+    }
   }
 }
 
-shared_ptr<Node> Add(shared_ptr<Node> n1, shared_ptr<Node> n2) {
-  auto root = make_shared<Node>();
-  n1->parent = root;
+std::unique_ptr<Node> Add(std::unique_ptr<Node> n1, std::unique_ptr<Node> n2) {
+  auto root = std::make_unique<Node>();
   root->left = std::move(n1);
-  n2->parent = root;
+  root->left->parent = root.get();
   root->right = std::move(n2);
-  Reduce(root);
+  root->right->parent = root.get();
+  Reduce(root.get());
   return root;
 }
 
-int Magnitude(Node* node) {
-  if (node->IsLeaf()) {
+std::int64_t Magnitude(Node* node) {
+  if (!node->HasChildren())
     return node->value;
+  std::int64_t magnitude{0};
+  if (node->HasLeft()) {
+    magnitude += 3 * Magnitude(node->left.get());
   }
-  int left_magnitude = 0;
-  if (node->left) {
-    left_magnitude = Magnitude(node->left.get());
+  if (node->HasRight()) {
+    magnitude += 2 * Magnitude(node->right.get());
   }
-  int right_magnitude = 0;
-  if (node->right) {
-    right_magnitude = Magnitude(node->right.get());
-  }
-  return 3 * left_magnitude + 2 * right_magnitude;
+  return magnitude;
 }
 
-shared_ptr<Node> DeepCopy(const shared_ptr<Node>& node) {
-  if (!node) return nullptr;
-  auto copy = make_shared<Node>();
-  copy->value = node->value;
-  copy->left = DeepCopy(node->left);
-  if (copy->left) {
-    copy->left->parent = copy;
+std::unique_ptr<Node> Clone(const Node* node) {
+  auto root = std::make_unique<Node>();
+  root->value = node->value;
+  if (node->HasLeft()) {
+    root->left = Clone(node->left.get());
+    root->left->parent = root.get();
   }
-  copy->right = DeepCopy(node->right);
-  if (copy->right) {
-    copy->right->parent = copy;
+  if (node->HasRight()) {
+    root->right = Clone(node->right.get());
+    root->right->parent = root.get();
   }
-  return copy;
-}
-
-int Solve() {
-  vector<shared_ptr<Node>> numbers = ParseNumbers();
-  int largest_magnitude = 0;
-  for (auto i = 0; i < numbers.size(); ++i) {
-    for (auto j = 0; j < numbers.size(); ++j) {
-      if (i == j) continue;
-      auto n1 = DeepCopy(numbers[i]);
-      auto n2 = DeepCopy(numbers[j]);
-      const auto sum = Add(n1, n2);
-      largest_magnitude = max(largest_magnitude, Magnitude(sum.get()));
-    }
-  }
-  return largest_magnitude;
+  return root;
 }
 
 int main() {
-  auto answer = Solve();
-  cout << answer << endl;
+  const auto numbers = ReadNumbers();
+  // Bruteforce all combinations.
+  std::int64_t max_magnitude{0};
+  for (std::size_t i = 0; i < numbers.size(); ++i) {
+    for (std::size_t j = 0; j < numbers.size(); ++j) {
+      if (i == j)
+        continue;
+      auto n1 = Clone(numbers[i].get());
+      auto n2 = Clone(numbers[j].get());
+      auto number = Add(std::move(n1), std::move(n2));
+      const auto magnitude = Magnitude(number.get());
+      max_magnitude = std::max(max_magnitude, magnitude);
+    }
+  }
+  std::cout << max_magnitude << '\n';
 }
