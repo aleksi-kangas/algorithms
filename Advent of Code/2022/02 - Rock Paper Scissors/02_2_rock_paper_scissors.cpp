@@ -1,99 +1,100 @@
-#include <algorithm>
-#include <bitset>
-#include <cassert>
-#include <climits>
-#include <cmath>
-#include <deque>
-#include <functional>
+#include <cstdint>
 #include <iostream>
-#include <iterator>
-#include <map>
-#include <memory>
-#include <numeric>
-#include <optional>
-#include <queue>
-#include <set>
-#include <sstream>
-#include <stack>
+#include <stdexcept>
 #include <string>
-#include <tuple>
-#include <unordered_map>
-#include <unordered_set>
-#include <utility>
-#include <vector>
 
-using namespace std;
+enum class Move { Rock, Paper, Scissors };
+enum class Strategy { kLoss, kDraw, kWin };
 
-using ll = long long;
-
-enum class RPS { Rock, Paper, Scissors };
-enum class Winner { P1, Draw, P2 };
-
-RPS CharToRPS(char c) {
+Move ParseMove(char c) {
   switch (c) {
-    case 'A': return RPS::Rock;
-    case 'B': return RPS::Paper;
-    case 'C': return RPS::Scissors;
-    default: throw invalid_argument{"Unknown character"};
+    case 'A':
+      return Move::Rock;
+    case 'B':
+      return Move::Paper;
+    case 'C':
+      return Move::Scissors;
+    default:
+      throw std::invalid_argument{"Invalid move"};
   }
 }
 
-Winner CharToWinner(char c) {
+Strategy ParseStrategy(char c) {
   switch (c) {
-    case 'X': return Winner::P1;
-    case 'Y': return Winner::Draw;
-    case 'Z': return Winner::P2;
-    default: throw invalid_argument{"Unknown character"};
+    case 'X':
+      return Strategy::kLoss;
+    case 'Y':
+      return Strategy::kDraw;
+    case 'Z':
+      return Strategy::kWin;
+    default:
+      throw std::invalid_argument{"Invalid strategy"};
   }
 }
 
-vector<pair<RPS, Winner>> ReadStrategy() {
-  vector<pair<RPS, Winner>> strategy;
-  string line;
-  while (getline(cin, line) && !line.empty()) {
-    const char p1 = line[0];
-    const char winner = line[2];
-    strategy.emplace_back(CharToRPS(p1), CharToWinner(winner));
-  }
-  return strategy;
-}
-
-int Score(RPS rps) {
-  switch (rps) {
-    case RPS::Rock: return 1;
-    case RPS::Paper: return 2;
-    case RPS::Scissors: return 3;
-  }
-}
-
-int Solve() {
-  const vector<pair<RPS, Winner>> strategy = ReadStrategy();
-
-  int total_score = 0;
-  for (const auto &[p1, winner] : strategy) {
-    switch (winner) {
-      case Winner::Draw: {
-        total_score += 3;
-        total_score += Score(p1);
-      } break;
-      case Winner::P1: {
-        if (p1 == RPS::Rock) total_score += Score(RPS::Scissors);
-        if (p1 == RPS::Paper) total_score += Score(RPS::Rock);
-        if (p1 == RPS::Scissors) total_score += Score(RPS::Paper);
-      } break;
-      case Winner::P2: {
-        total_score += 6;
-        if (p1 == RPS::Rock) total_score += Score(RPS::Paper);
-        if (p1 == RPS::Paper) total_score += Score(RPS::Scissors);
-        if (p1 == RPS::Scissors) total_score += Score(RPS::Rock);
-      } break;
+Move ExecuteStrategy(Move opponent, Strategy strategy) {
+  switch (strategy) {
+    case Strategy::kDraw:
+      return opponent;
+    case Strategy::kLoss: {
+      switch (opponent) {
+        case Move::Rock:
+          return Move::Scissors;
+        case Move::Paper:
+          return Move::Rock;
+        case Move::Scissors:
+          return Move::Paper;
+      }
+    }
+    case Strategy::kWin: {
+      switch (opponent) {
+        case Move::Rock:
+          return Move::Paper;
+        case Move::Paper:
+          return Move::Scissors;
+        case Move::Scissors:
+          return Move::Rock;
+      }
     }
   }
+}
 
-  return total_score;
+std::int32_t Score(Move opponent, Strategy strategy) {
+  std::int32_t score{0};
+  const Move move = ExecuteStrategy(opponent, strategy);
+  switch (move) {
+    case Move::Rock:
+      score += 1;
+      break;
+    case Move::Paper:
+      score += 2;
+      break;
+    case Move::Scissors:
+      score += 3;
+      break;
+  }
+  switch (strategy) {
+    case Strategy::kDraw:
+      score += 3;
+      break;
+    case Strategy::kWin:
+      score += 6;
+      break;
+    default:
+      break;
+  }
+  return score;
 }
 
 int main() {
-  auto answer = Solve();
-  cout << answer << endl;
+  std::int32_t total_score{0};
+  std::string line{};
+  while (std::getline(std::cin, line) && !line.empty()) {
+    if (line.size() != 3)
+      throw std::invalid_argument{"Invalid input"};
+    const Move opponent = ParseMove(line[0]);
+    const Strategy strategy = ParseStrategy(line[2]);
+    total_score += Score(opponent, strategy);
+  }
+  std::cout << total_score << '\n';
 }
