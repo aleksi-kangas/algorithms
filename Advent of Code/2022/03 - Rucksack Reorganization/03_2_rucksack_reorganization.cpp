@@ -1,64 +1,48 @@
-#include <algorithm>
-#include <bitset>
-#include <cassert>
-#include <climits>
-#include <cmath>
-#include <deque>
-#include <functional>
+#include <cstdint>
 #include <iostream>
-#include <iterator>
-#include <map>
-#include <memory>
-#include <numeric>
-#include <optional>
-#include <queue>
-#include <set>
-#include <sstream>
-#include <stack>
+#include <stdexcept>
 #include <string>
-#include <tuple>
 #include <unordered_map>
 #include <unordered_set>
-#include <utility>
 #include <vector>
 
-using namespace std;
-
-using ll = long long;
-
-vector<string> ReadRucksacks() {
-  vector<string> rucksacks;
-  string r;
-  while (getline(cin, r) && !r.empty()) {
-    rucksacks.push_back(std::move(r));
+std::vector<std::string> ReadGroup() {
+  std::vector<std::string> group{};
+  std::string line{};
+  for (std::size_t i = 1; i <= 3; ++i) {
+    std::getline(std::cin, line);
+    group.push_back(std::move(line));
   }
-  return rucksacks;
+  return group;
 }
 
-int Solve() {
-  const auto rucksacks = ReadRucksacks();
-  int priority_sum = 0;
-  for (size_t i = 0; i < rucksacks.size(); i += 3) {
-    unordered_map<char, int> counts;
-    for (size_t j = 0; j < 3; ++j) {
-      unordered_set<char> seen;
-      for (char c : rucksacks[i + j]) {
-        seen.insert(c);
-      }
-      for (char c : seen) {
-        ++counts[c];
-      }
+std::int32_t BadgePriority(const std::vector<std::string>& group) {
+  std::unordered_map<char, std::int32_t> freq{};
+  for (const std::string& elf : group) {
+    std::unordered_set<char> seen{};
+    for (const char c : elf) {
+      seen.insert(c);
     }
-    for (auto& [c, count] : counts) {
-      if (count != 3) continue;
-      if (islower(c)) priority_sum += c - 'a' + 1;
-      else priority_sum += c - 'A' + 27;
+    for (const char c : seen) {
+      ++freq[c];
     }
   }
-  return priority_sum;
+  for (const auto& [c, f] : freq) {
+    if (f != 3)
+      continue;
+    if (c - 'a' >= 0 && c - 'a' <= 26)
+      return c - 'a' + 1;
+    if (c - 'A' >= 0 && c - 'A' <= 26)
+      return c - 'A' + 27;
+  }
+  throw std::invalid_argument{"Expected one common item to exist"};
 }
 
 int main() {
-  auto answer = Solve();
-  cout << answer << endl;
+  std::int32_t badge_sum{0};
+  while (std::cin.peek() != '\n') {
+    const std::vector<std::string> group = ReadGroup();
+    badge_sum += BadgePriority(group);
+  }
+  std::cout << badge_sum << std::endl;
 }
