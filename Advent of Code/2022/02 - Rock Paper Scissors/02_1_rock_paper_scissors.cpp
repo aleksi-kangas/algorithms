@@ -1,88 +1,77 @@
-#include <algorithm>
-#include <bitset>
-#include <cassert>
-#include <climits>
-#include <cmath>
-#include <deque>
-#include <functional>
+#include <cstdint>
 #include <iostream>
-#include <iterator>
-#include <map>
-#include <memory>
-#include <numeric>
-#include <optional>
-#include <queue>
-#include <set>
-#include <sstream>
-#include <stack>
+#include <stdexcept>
 #include <string>
-#include <tuple>
-#include <unordered_map>
-#include <unordered_set>
-#include <utility>
-#include <vector>
 
-using namespace std;
+enum class Move { kRock, kPaper, kScissors };
 
-using ll = long long;
-
-enum class RPS { Rock, Paper, Scissors };
-
-RPS CharToRPS(char c) {
+Move ParseMove(char c) {
   switch (c) {
-    case 'A': return RPS::Rock;
-    case 'B': return RPS::Paper;
-    case 'C': return RPS::Scissors;
-    case 'X': return RPS::Rock;
-    case 'Y': return RPS::Paper;
-    case 'Z': return RPS::Scissors;
-    default: throw invalid_argument{"Unknown character"};
+    case 'A':
+      return Move::kRock;
+    case 'B':
+      return Move::kPaper;
+    case 'C':
+      return Move::kScissors;
+    case 'X':
+      return Move::kRock;
+    case 'Y':
+      return Move::kPaper;
+    case 'Z':
+      return Move::kScissors;
+    default:
+      throw std::invalid_argument{"Invalid move"};
   }
 }
 
-vector<pair<RPS, RPS>> ReadStrategy() {
-  vector<pair<RPS, RPS>> strategy;
-  string line;
-  while (getline(cin, line) && !line.empty()) {
-    const char p1 = line[0];
-    const char p2 = line[2];
-    strategy.emplace_back(CharToRPS(p1), CharToRPS(p2));
-  }
-  return strategy;
+std::int32_t Compare(Move m1, Move m2) {
+  if (m1 == m2)
+    return 0;
+  if (m1 == Move::kRock)
+    return m2 == Move::kScissors ? 1 : -1;
+  if (m1 == Move::kPaper)
+    return m2 == Move::kRock ? 1 : -1;
+  if (m1 == Move::kScissors)
+    return m2 == Move::kPaper ? 1 : -1;
+  throw std::invalid_argument{"Invalid move"};
 }
 
-int Winner(RPS p1, RPS p2) {
-  if (p1 == RPS::Rock && p2 == RPS::Rock) return 0;
-  if (p1 == RPS::Paper && p2 == RPS::Paper) return 0;
-  if (p1 == RPS::Scissors && p2 == RPS::Scissors) return 0;
-
-  if (p1 == RPS::Rock && p2 == RPS::Paper) return 1;
-  if (p1 == RPS::Rock && p2 == RPS::Scissors) return -1;
-
-  if (p1 == RPS::Paper && p2 == RPS::Rock) return -1;
-  if (p1 == RPS::Paper && p2 == RPS::Scissors) return 1;
-
-  if (p1 == RPS::Scissors && p2 == RPS::Rock) return 1;
-  if (p1 == RPS::Scissors && p2 == RPS::Paper) return -1;
-
-  return 0;
-}
-
-int Solve() {
-  const vector<pair<RPS, RPS>> strategy = ReadStrategy();
-
-  int total_score = 0;
-  for (const auto& [p1, p2] : strategy) {
-    total_score += p2 == RPS::Rock ? 1 : p2 == RPS::Paper ? 2 : p2 == RPS::Scissors ? 3 : 0;
-    const int winner = Winner(p1, p2);
-    if (winner == 0) total_score += 3;
-    if (winner > 0) total_score += 6;
+std::int32_t Score(Move m1, Move m2) {
+  std::int32_t score{0};
+  switch (m2) {
+    case Move::kRock:
+      score += 1;
+      break;
+    case Move::kPaper:
+      score += 2;
+      break;
+    case Move::kScissors:
+      score += 3;
+      break;
   }
-
-  return total_score;
+  const std::int32_t result = Compare(m2, m1);
+  switch (result) {
+    case 0:
+      score += 3;
+      break;
+    case 1:
+      score += 6;
+      break;
+    default:
+      break;
+  }
+  return score;
 }
 
 int main() {
-  auto answer = Solve();
-  cout << answer << endl;
+  std::int32_t total_score{0};
+  std::string line{};
+  while (std::getline(std::cin, line) && !line.empty()) {
+    if (line.size() != 3)
+      throw std::invalid_argument{"Invalid input"};
+    const Move m1 = ParseMove(line[0]);
+    const Move m2 = ParseMove(line[2]);
+    total_score += Score(m1, m2);
+  }
+  std::cout << total_score << '\n';
 }
