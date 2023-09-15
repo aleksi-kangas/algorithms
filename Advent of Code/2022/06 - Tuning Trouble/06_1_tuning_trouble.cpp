@@ -1,48 +1,29 @@
-#include <algorithm>
-#include <bitset>
-#include <cassert>
-#include <climits>
-#include <cmath>
-#include <deque>
-#include <functional>
+#include <cstdint>
 #include <iostream>
-#include <iterator>
-#include <map>
-#include <memory>
-#include <numeric>
-#include <optional>
-#include <queue>
-#include <set>
-#include <sstream>
-#include <stack>
 #include <string>
-#include <tuple>
 #include <unordered_map>
-#include <unordered_set>
-#include <utility>
-#include <vector>
 
-using namespace std;
-
-using ll = long long;
-
-int Solve() {
-  string line;
-  getline(cin, line);
-
-  for (int i = 3; i < line.size(); ++i) {
-    unordered_set<char> seen;
-    for (int j = 0; j < 4; ++j) {
-      seen.insert(line[i - j]);
-    }
-    if (seen.size() == 4) {
-      return i + 1;
-    }
-  }
-  return -1;
-}
+// On some platforms, need to redirect input from a file:
+// ./<executable_name> < <input_file_name>, e.g. ./06_1_tuning_trouble < in.txt
 
 int main() {
-  auto answer = Solve();
-  cout << answer << endl;
+  constexpr std::size_t kMarkerSize{4};
+  std::string signal{};
+  std::cin >> signal;
+  std::unordered_map<char, std::size_t> window{};
+  std::size_t l{0};
+  for (std::size_t r = 0; r < signal.size(); ++r) {
+    ++window[signal[r]];
+    if (window.size() == kMarkerSize) {
+      std::cout << r + 1 << std::endl;
+      return 0;
+    }
+    while (r - l + 1 >= kMarkerSize) {
+      window[signal[l]]--;
+      if (window[signal[l]] == 0) {
+        window.erase(signal[l]);
+      }
+      ++l;
+    }
+  }
 }
