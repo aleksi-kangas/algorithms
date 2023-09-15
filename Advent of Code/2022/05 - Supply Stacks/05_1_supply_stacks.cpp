@@ -1,43 +1,28 @@
-#include <algorithm>
-#include <bitset>
-#include <cassert>
-#include <climits>
-#include <cmath>
+#include <cstdint>
 #include <deque>
-#include <functional>
 #include <iostream>
-#include <iterator>
-#include <map>
-#include <memory>
-#include <numeric>
-#include <optional>
-#include <queue>
-#include <set>
-#include <sstream>
-#include <stack>
 #include <string>
-#include <tuple>
-#include <unordered_map>
-#include <unordered_set>
-#include <utility>
 #include <vector>
 
-using namespace std;
+struct Move {
+  std::size_t from{0};
+  std::size_t to{0};
+  std::size_t count{0};
+};
 
-using ll = long long;
-
-vector<deque<char>> ReadStacks() {
-  vector<deque<char>> stacks;
-  string line;
-  constexpr size_t kRawStackLength = 3;
-  while (getline(cin, line) && !line.empty()) {
-    const size_t kStacksPerRow = line.size() / (kRawStackLength + 1) + 1;
-    if (stacks.size() <  kStacksPerRow) {
-      stacks.resize(kStacksPerRow);
+std::vector<std::deque<char>> ReadStacks() {
+  constexpr std::size_t kRawStackLength{3};
+  std::vector<std::deque<char>> stacks{};
+  std::string line{};
+  while (std::getline(std::cin, line) && !line.empty()) {
+    const std::size_t stack_count = line.size() / kRawStackLength;
+    if (stacks.size() != stack_count) {
+      stacks.resize(stack_count);
     }
-    for (size_t i = 0; i < kStacksPerRow; ++i) {
-      char c = line[i * (kRawStackLength + 1) + 1];
-      if (isalpha(c)) {
+    for (std::size_t i = 0; i < stack_count; ++i) {
+      const std::size_t spacing = i * 1;
+      const char c = line[i * kRawStackLength + spacing + 1];  // e.g. [Z] -> Z
+      if (std::isalpha(c)) {
         stacks[i].push_back(c);
       }
     }
@@ -45,53 +30,40 @@ vector<deque<char>> ReadStacks() {
   return stacks;
 }
 
-struct Instruction {
-  int count = 0;
-  pair<int, int> from_to{};
-};
-
-vector<Instruction> ReadInstructions() {
-  vector<Instruction> instructions;
-  string line;
-  while (getline(cin, line) && !line.empty()) {
-    Instruction instruction;
-    istringstream iss(line);
-    iss.ignore(5);
-    iss >> instruction.count;
-    iss.ignore(6);
-    iss >> instruction.from_to.first;
-    --instruction.from_to.first;
-    iss.ignore(4);
-    iss >> instruction.from_to.second;
-    --instruction.from_to.second;
-    instructions.push_back(std::move(instruction));
+std::vector<Move> ReadMoves() {
+  std::vector<Move> moves{};
+  std::string line{};
+  while (std::getline(std::cin, line) && !line.empty()) {
+    const auto count_label_index = line.find("move ");
+    const auto from_label_index = line.find("from ", count_label_index + 5);
+    const auto to_label_index = line.find("to ", from_label_index + 5);
+    const std::size_t count = std::stoi(line.substr(count_label_index + 5, from_label_index));
+    const std::size_t from = std::stoi(line.substr(from_label_index + 5, to_label_index));
+    const std::size_t to = std::stoi(line.substr(to_label_index + 3));
+    moves.push_back({from, to, count});
   }
-  return instructions;
+  return moves;
 }
 
-string Solve() {
-  auto stacks = ReadStacks();
-  const auto instructions = ReadInstructions();
-
-  for (const auto &instruction : instructions) {
-    auto &from = stacks[instruction.from_to.first];
-    auto &to = stacks[instruction.from_to.second];
-    for (int i = 0; i < instruction.count; ++i) {
-      to.push_front(from.front());
-      from.pop_front();
+void PerformMoves(std::vector<std::deque<char>>& stacks, const std::vector<Move>& moves) {
+  for (const auto& move : moves) {
+    std::deque<char>& from_stack = stacks[move.from - 1];
+    std::deque<char>& to_stack = stacks[move.to - 1];
+    for (std::size_t i = 0; i < move.count; ++i) {
+      to_stack.push_front(from_stack.front());
+      from_stack.pop_front();
     }
   }
-
-  stringstream ss;
-  for (const auto &stack : stacks) {
-    if (stack.empty())
-      continue;
-    ss << stack.front();
-  }
-  return ss.str();
 }
 
 int main() {
-  auto answer = Solve();
-  cout << answer << endl;
+  auto stacks = ReadStacks();
+  const auto moves = ReadMoves();
+  PerformMoves(stacks, moves);
+  for (const auto& stack : stacks) {
+    if (!stack.empty()) {
+      std::cout << stack.front();
+    }
+  }
+  std::cout << std::endl;
 }
