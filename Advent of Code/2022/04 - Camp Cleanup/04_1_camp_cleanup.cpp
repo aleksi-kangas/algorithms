@@ -1,64 +1,37 @@
-#include <algorithm>
-#include <bitset>
-#include <cassert>
-#include <climits>
-#include <cmath>
-#include <deque>
-#include <functional>
+#include <cstdint>
 #include <iostream>
-#include <iterator>
-#include <map>
-#include <memory>
-#include <numeric>
-#include <optional>
-#include <queue>
-#include <set>
-#include <sstream>
-#include <stack>
 #include <string>
-#include <tuple>
-#include <unordered_map>
-#include <unordered_set>
 #include <utility>
-#include <vector>
 
-using namespace std;
+using range_t = std::pair<std::int32_t, std::int32_t>;
 
-using ll = long long;
-
-using Range = pair<int, int>;
-
-vector<pair<Range, Range>> ReadInput() {
-  vector<pair<Range, Range>> pairs;
-  string line;
-  while (getline(cin, line) && !line.empty()) {
-    auto comma_index = line.find(',');
-    auto first = line.substr(0, comma_index);
-    auto second = line.substr(comma_index + 1);
-    auto first_dash_index = first.find('-');
-    auto second_dash_index = second.find('-');
-    pairs.emplace_back(make_pair(stoi(first.substr(0, first_dash_index)),
-                                 stoi(first.substr(first_dash_index + 1))),
-                       make_pair(stoi(second.substr(0, second_dash_index)),
-                                 stoi(second.substr(second_dash_index + 1))));
-  }
-  return pairs;
+std::pair<range_t, range_t> ParseRangePair(const std::string& s) {
+  const auto first_dash_index = s.find('-');
+  const auto comma_index = s.find(',');
+  const auto second_dash_index = s.find('-', first_dash_index + 1);
+  const auto first_begin = s.substr(0, first_dash_index);
+  const auto first_end = s.substr(first_dash_index + 1, comma_index - first_dash_index - 1);
+  const auto second_begin = s.substr(comma_index + 1, second_dash_index - comma_index - 1);
+  const auto second_end = s.substr(second_dash_index + 1);
+  return {std::make_pair(std::stoi(first_begin), std::stoi(first_end)),
+          std::make_pair(std::stoi(second_begin), std::stoi(second_end))};
 }
 
-int Solve() {
-  const vector<pair<Range, Range>> pairs = ReadInput();
-  int answer = 0;
-  for (const auto &[first, second] : pairs) {
-    if (first.first <= second.first && second.second <= first.second) {
-      ++answer;
-    } else if (second.first <= first.first && first.second <= second.second) {
-      ++answer;
-    }
-  }
-  return answer;
+bool IsFullyContained(const std::pair<range_t, range_t>& p) {
+  const auto& [a, b] = p;
+  const bool a_contains_b = a.first <= b.first && b.second <= a.second;
+  const bool b_contains_a = b.first <= a.first && a.second <= b.second;
+  return a_contains_b || b_contains_a;
 }
 
 int main() {
-  auto answer = Solve();
-  cout << answer << endl;
+  std::int32_t answer{0};
+  std::string line{};
+  while (std::getline(std::cin, line) && !line.empty()) {
+    const auto range_pair = ParseRangePair(line);
+    if (IsFullyContained(range_pair)) {
+      ++answer;
+    }
+  }
+  std::cout << answer << std::endl;
 }
