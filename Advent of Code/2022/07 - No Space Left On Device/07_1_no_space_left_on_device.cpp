@@ -1,123 +1,129 @@
-#include <algorithm>
-#include <bitset>
-#include <cassert>
-#include <climits>
-#include <cmath>
-#include <deque>
-#include <functional>
+#include <cstdint>
 #include <iostream>
-#include <iterator>
-#include <map>
 #include <memory>
-#include <numeric>
-#include <optional>
-#include <queue>
-#include <set>
-#include <sstream>
-#include <stack>
+#include <stdexcept>
 #include <string>
-#include <tuple>
 #include <unordered_map>
-#include <unordered_set>
 #include <utility>
 #include <vector>
 
-using namespace std;
-
-using ll = long long;
+enum class Command { kNone, kCD, kLS };
 
 struct File {
-  string name;
-  int size;
+  std::string name{};
+  std::uint64_t size{};
+
+  File(std::string name, std::uint64_t size) : name{std::move(name)}, size{size} {}
 };
 
 struct Directory {
-  string name;
-  shared_ptr<Directory> parent;
-  unordered_map<string, shared_ptr<Directory>> children;
-  std::vector<File> files;
+  std::string name{};
+  Directory* parent{nullptr};
+  std::unordered_map<std::string, std::unique_ptr<Directory>> subdirectories{};
+  std::vector<File> files{};
+
+  Directory(std::string name, Directory* parent) : name{std::move(name)}, parent{parent} {}
+
+  [[nodiscard]] std::uint64_t Size() const {
+    std::uint64_t size{0};
+    for (const auto& [_, subdirectory] : subdirectories) {
+      size += subdirectory->Size();
+    }
+    for (const auto& file : files) {
+      size += file.size;
+    }
+    return size;
+  }
 };
 
-vector<string> Split(const string &s, char c) {
-  vector<string> result;
-  stringstream ss(s);
-  string item;
-  while (getline(ss, item, c)) {
-    result.push_back(item);
+std::vector<std::string_view> Split(std::string_view s, char c) {
+  std::vector<std::string_view> result{};
+  std::size_t start = 0;
+  std::size_t end = s.find(c);
+  while (end != std::string_view::npos) {
+    result.push_back(s.substr(start, end - start));
+    start = end + 1;
+    end = s.find(c, start);
   }
+  result.push_back(s.substr(start, end));
   return result;
 }
 
-bool IsCommand(const string &s) { return s[0] == '$'; }
+bool IsCommand(std::string_view s) {
+  return s.starts_with("$");
+}
 
-void BuildFilesystemTree(shared_ptr<Directory> root,
-                         const vector<string> &lines) {
-  auto current = root;
-  for (const auto &line : lines) {
-    vector<string> parts = Split(line, ' ');
-    if (IsCommand(parts[0])) {
-      if (parts[1] == "cd") {
-        if (parts[2] == "..") {
-          current = current->parent;
-        } else if (parts[2] == "/") {
-          current = root;
+Command ParseCommand(std::string_view line) {
+  const auto line_parts = Split(line, ' ');
+  if (line_parts[1] == "cd") {
+    return Command::kCD;
+  } else if (line_parts[1] == "ls") {
+    return Command::kLS;
+  }
+  return Command::kNone;
+}
+
+std::unique_ptr<Directory> ParseFilesystemTree() {
+  std::unique_ptr<Directory> root{nullptr};
+  std::string line{};
+  Directory* current{nullptr};
+  Command command{Command::kNone};
+  while (std::getline(std::cin, line) && !line.empty()) {
+    const auto line_parts = Split(line, ' ');
+    if (IsCommand(line)) {
+      if (line_parts[1] == "cd") {
+        if (line_parts[2] == "/") {
+          if (root == nullptr) {
+            root = std::make_unique<Directory>("/", nullptr);
+            current = root.get();
+          } else {
+            current = root.get();
+          }
+        } else if (line_parts[2] == "..") {
+          if (current->parent != nullptr) {
+            current = current->parent;
+          }
         } else {
-          current = current->children[parts[2]];
+          current = current->subdirectories[std::string{line_parts[2]}].get();
         }
-      } else if (parts[1] == "ls") {
-        continue;
-      } else {
-        throw runtime_error{"Unknown command: " + parts[1]};
       }
     } else {
-      if (parts[0] == "dir") {
-        auto child = make_shared<Directory>();
-        child->parent = current;
-        child->name = parts[1];
-        current->children[child->name] = child;
+      if (line_parts.size() != 2)
+        throw std::runtime_error{"Invalid line"};
+      if (line_parts[0] == "dir") {
+        current->subdirectories[std::string{line_parts[1]}] =
+            std::make_unique<Directory>(std::string{line_parts[1]}, current);
       } else {
-        File file{.name = parts[1], .size = stoi(parts[0])};
-        current->files.push_back(file);
+        current->files.emplace_back(std::string{line_parts[1]}, std::stoull(std::string{line_parts[0]}));
       }
     }
   }
+  return root;
 }
 
-ll DirectorySize(shared_ptr<Directory> directory) {
-  ll sum = 0;
-  for (const auto &file : directory->files) {
-    sum += file.size;
-  }
-  for (const auto &[_, child] : directory->children) {
-    sum += DirectorySize(child);
+std::uint64_t SumOfDirectorySizes(const Directory* root, std::uint64_t size_constraint, bool less_than, bool equal) {
+  std::uint64_t sum{0};
+  for (const auto& [_, subdirectory] : root->subdirectories) {
+    const std::uint64_t subdirectory_size = subdirectory->Size();
+    if (less_than && equal && subdirectory_size <= size_constraint) {
+      sum += subdirectory_size;
+    }
+    if (less_than && !equal && subdirectory_size < size_constraint) {
+      sum += subdirectory_size;
+    }
+    if (!less_than && equal && subdirectory_size >= size_constraint) {
+      sum += subdirectory_size;
+    }
+    if (!less_than && !equal && subdirectory_size > size_constraint) {
+      sum += subdirectory_size;
+    }
+    sum += SumOfDirectorySizes(subdirectory.get(), size_constraint, less_than, equal);
   }
   return sum;
 }
 
-void WalkTree(shared_ptr<Directory> directory, ll &size) {
-  ll directory_size = DirectorySize(directory);
-  if (directory_size <= 100000) {
-    size += directory_size;
-  }
-  for (const auto &[_, child] : directory->children) {
-    WalkTree(child, size);
-  }
-}
-
-ll Solve() {
-  vector<string> lines;
-  string line;
-  while (getline(cin, line) && !line.empty()) {
-    lines.push_back(line);
-  }
-  auto root = make_shared<Directory>();
-  BuildFilesystemTree(root, lines);
-  ll total_size = 0;
-  WalkTree(root, total_size);
-  return total_size;
-}
-
 int main() {
-  auto answer = Solve();
-  cout << answer << endl;
+  const auto root = ParseFilesystemTree();
+  const std::uint64_t answer = SumOfDirectorySizes(root.get(), 100000, true, true);
+  std::cout << answer << std::endl;
 }
