@@ -1,119 +1,75 @@
-#include <algorithm>
-#include <bitset>
-#include <cassert>
-#include <climits>
-#include <cmath>
-#include <deque>
-#include <functional>
+#include <cstdint>
 #include <iostream>
-#include <iterator>
-#include <map>
-#include <memory>
-#include <numeric>
-#include <optional>
-#include <queue>
-#include <set>
-#include <sstream>
-#include <stack>
 #include <string>
-#include <tuple>
-#include <unordered_map>
-#include <unordered_set>
-#include <utility>
 #include <vector>
 
-using namespace std;
-
-using ll = long long;
-
-vector<vector<int>> ReadInput() {
-  vector<vector<int>> grid;
-  string line;
-  while (getline(cin, line) && !line.empty()) {
-    vector<int> row;
-    for (char c : line) {
+std::vector<std::vector<std::int32_t>> ReadGrid() {
+  std::vector<std::vector<std::int32_t>> grid{};
+  std::string line{};
+  while (std::getline(std::cin, line) && !line.empty()) {
+    std::vector<std::int32_t> row{};
+    for (const char c : line) {
       row.push_back(c - '0');
     }
-    grid.push_back(row);
+    grid.push_back(std::move(row));
   }
   return grid;
 }
 
-int CountVisibleLeft(const vector<vector<int>> &grid, int r, int c) {
-  int count = 0;
-  for (int j = c - 1; j >= 0; --j) {
-    if (grid[r][c] <= grid[r][j]) {
-      ++count;
-      return count;
-    }
+std::int32_t VisibleLeft(const std::vector<std::vector<std::int32_t>>& grid, std::size_t i, std::size_t j) {
+  std::int32_t count{0};
+  for (std::int32_t k = static_cast<std::int32_t>(j) - 1; k >= 0; --k) {
     ++count;
+    if (grid[i][j] <= grid[i][k])
+      return count;
   }
   return count;
 }
 
-int CountVisibleRight(const vector<vector<int>> &grid, int r, int c) {
-  int count = 0;
-  for (int j = c + 1; j < grid[r].size(); ++j) {
-    if (grid[r][c] <= grid[r][j]) {
-      ++count;
-      return count;
-    }
+std::int32_t VisibleRight(const std::vector<std::vector<std::int32_t>>& grid, std::size_t i, std::size_t j) {
+  std::int32_t count{0};
+  for (std::size_t k = j + 1; k < grid[0].size(); ++k) {
     ++count;
+    if (grid[i][j] <= grid[i][k])
+      return count;
   }
   return count;
 }
 
-int CountVisibleUp(const vector<vector<int>> &grid, int r, int c) {
-  int count = 0;
-  for (int i = r - 1; i >= 0; --i) {
-    if (grid[r][c] <= grid[i][c]) {
-      ++count;
-      return count;
-    }
+std::int32_t VisibleUp(const std::vector<std::vector<std::int32_t>>& grid, std::size_t i, std::size_t j) {
+  std::int32_t count{0};
+  for (std::int32_t k = static_cast<std::int32_t>(i) - 1; k >= 0; --k) {
     ++count;
+    if (grid[i][j] <= grid[k][j])
+      return count;
   }
   return count;
 }
 
-int CountVisibleDown(const vector<vector<int>> &grid, int r, int c) {
-  int count = 0;
-  for (int i = r + 1; i < grid.size(); ++i) {
-    if (grid[r][c] <= grid[i][c]) {
-      return count;
-    }
+std::int32_t VisibleDown(const std::vector<std::vector<std::int32_t>>& grid, std::size_t i, std::size_t j) {
+  std::int32_t count{0};
+  for (std::size_t k = i + 1; k < grid.size(); ++k) {
     ++count;
+    if (grid[i][j] <= grid[k][j])
+      return count;
   }
   return count;
-}
-
-struct Visible {
-  bool left = true;
-  bool right = true;
-  bool up = true;
-  bool down = true;
-};
-
-int Solve() {
-  const auto grid = ReadInput();
-  const int n = static_cast<int>(grid.size());
-  const int m = static_cast<int>(grid[0].size());
-
-  vector<vector<Visible>> visible(n, vector<Visible>(m));
-  int answer = 0;
-  for (int r = 0; r < n; ++r) {
-    for (int c = 0; c < m; ++c) {
-      int score = 1;
-      score *= CountVisibleLeft(grid, r, c);
-      score *= CountVisibleRight(grid, r, c);
-      score *= CountVisibleUp(grid, r, c);
-      score *= CountVisibleDown(grid, r, c);
-      answer = max(answer, score);
-    }
-  }
-  return answer;
 }
 
 int main() {
-  auto answer = Solve();
-  cout << answer << endl;
+  auto grid = ReadGrid();
+  const std::size_t n = grid.size();
+  const std::size_t m = grid[0].size();
+  std::int64_t answer{0};
+  for (std::size_t i = 0; i < n; ++i) {
+    for (std::size_t j = 0; j < m; ++j) {
+      std::int64_t score{1};
+      score *= VisibleLeft(grid, i, j);
+      score *= VisibleRight(grid, i, j);
+      score *= VisibleUp(grid, i, j);
+      score *= VisibleDown(grid, i, j);
+      answer = std::max(answer, score);
+    }
+  }
+  std::cout << answer << std::endl;
 }
