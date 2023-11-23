@@ -1,115 +1,71 @@
-#include <algorithm>
-#include <bitset>
-#include <cassert>
-#include <climits>
-#include <cmath>
-#include <deque>
-#include <functional>
+#include <array>
+#include <cstdint>
 #include <iostream>
-#include <iterator>
-#include <map>
-#include <memory>
-#include <numeric>
-#include <optional>
-#include <queue>
-#include <set>
-#include <sstream>
-#include <stack>
+#include <stdexcept>
 #include <string>
-#include <tuple>
-#include <unordered_map>
 #include <unordered_set>
-#include <utility>
 #include <vector>
 
-using namespace std;
-
-using ll = long long;
-
-enum class InstructionType { kNoOp, kAddX };
-
 struct Instruction {
-  InstructionType type = InstructionType::kNoOp;
-  int value = 0;
-  int cycles = 1;
-  int start = 1;
-};
+  enum class Type { kNoOp, kAddX } type{Type::kNoOp};
+  std::int32_t value{0};
 
-struct CompareInstruction {
-  bool operator()(const Instruction &lhs, const Instruction &rhs) const {
-    return lhs.start > rhs.start; // For min heap
+  [[nodiscard]] static std::vector<Instruction> Parse(std::string_view s) {
+    if (s.starts_with("noop")) {
+      return {Instruction{Type::kNoOp, 0}};
+    }
+    if (s.starts_with("addx")) {
+      return {Instruction{Type::kNoOp, 0}, Instruction{Type::kAddX, std::stoi(std::string{s.substr(4)})}};
+    }
+    throw std::runtime_error{"Invalid instruction"};
   }
 };
 
-vector<Instruction> ReadInput() {
-  vector<Instruction> instructions;
-  string line;
-  int start = 0;
-  while (getline(cin, line) && !line.empty()) {
-    stringstream ss{line};
-    vector<string> tokens;
-    while (getline(ss, line, ' ')) {
-      tokens.push_back(line);
+struct Program {
+  std::vector<Instruction> instructions{};
+
+  [[nodiscard]] static Program Parse(std::istream& is) {
+    std::string line{};
+    Program program{};
+    while (std::getline(is, line) && !line.empty()) {
+      std::vector<Instruction> instructions = Instruction::Parse(line);
+      program.instructions.insert(std::end(program.instructions), std::begin(instructions), std::end(instructions));
     }
-    if (tokens.size() == 1 && tokens[0] == "noop") {
-      instructions.emplace_back(
-          Instruction{InstructionType::kNoOp, 0, 1, start});
-      start += instructions.back().cycles;
-    } else if (tokens[0] == "addx") {
-      instructions.emplace_back(
-          Instruction{InstructionType::kAddX, stoi(tokens[1]), 2, start});
-      start += instructions.back().cycles;
-    } else {
-      assert(false);
-    }
+    return program;
   }
-  return instructions;
-}
-
-void Solve() {
-  auto instructions = ReadInput();
-
-  priority_queue<Instruction, vector<Instruction>, CompareInstruction> pq;
-  for (auto &instruction : instructions) {
-    pq.push(instruction);
-  }
-
-  vector<vector<char>> crt(6, vector<char>(40, '.'));
-
-  unordered_set<int> seen_cycles;
-  int signal_strength = 0;
-  int register_x = 1;
-  while (!pq.empty()) {
-    const auto instruction = pq.top();
-    pq.pop();
-
-    for (int c = instruction.start; c < instruction.start + instruction.cycles; ++c) {
-      int pixel_y = c / 40;
-      int pixel_x = c % 40;
-      if (abs(register_x - pixel_x) <= 1) {
-        crt[pixel_y][pixel_x] = '#';
-      }
-    }
-
-    switch (instruction.type) {
-    case InstructionType::kNoOp:
-      break;
-    case InstructionType::kAddX:
-      register_x += instruction.value;
-      break;
-    default:
-      assert(false);
-    }
-  }
-
-  for (int y = 0; y < 6; ++y) {
-    for (int x = 0; x < 40; ++x) {
-      cout << crt[y][x];
-    }
-    cout << endl;
-  }
-}
+};
 
 int main() {
-  Solve();
+  const Program program = Program::Parse(std::cin);
+  const std::unordered_set<std::int32_t> kInterestingCycles{20, 60, 100, 140, 180, 220};
+  std::array<std::int32_t, 1> registers{{1}};
+  std::int32_t cycle{1};
+  std::int64_t total_signal_strength{0};
+  std::string crt_line{};
+  crt_line.reserve(40);
+  std::int32_t crt_column{0};
+  for (const auto& [type, value] : program.instructions) {
+    if (kInterestingCycles.contains(cycle)) {
+      const std::int64_t signal_strength = cycle * static_cast<std::int64_t>(registers[0]);
+      total_signal_strength += signal_strength;
+    }
+    const bool should_draw = std::abs(registers[0] - crt_column) <= 1;
+    crt_line += should_draw ? '#' : '.';
+    switch (type) {
+      case Instruction::Type::kNoOp:
+        break;
+      case Instruction::Type::kAddX:
+        registers[0] += value;
+        break;
+      default:
+        throw std::runtime_error{"Invalid instruction type"};
+    }
+    ++cycle;
+    ++crt_column;
+    if (crt_column % 40 == 0) {
+      crt_column = 0;
+      std::cout << crt_line << '\n';
+      crt_line.clear();
+    }
+  }
 }
